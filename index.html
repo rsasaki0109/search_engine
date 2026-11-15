@@ -4,6 +4,7 @@
 :root{font-family:system-ui,sans-serif;color:#202c32;background:#f5f7f5}*{box-sizing:border-box}body{margin:0}header{padding:24px 6%;border-bottom:1px solid #dce4de;display:flex;justify-content:space-between;align-items:center}.brand{font-weight:800;letter-spacing:-1px;font-size:22px}.dot{color:#168267}small{color:#63756d}main{max-width:850px;margin:70px auto;padding:0 24px}h1{font-size:clamp(32px,6vw,48px);letter-spacing:-2px;margin:12px 0}p{color:#63756d;line-height:1.8}.eyebrow{font-size:12px;letter-spacing:2px;color:#168267;font-weight:700}form{display:flex;gap:10px}input,select,button{font:inherit;border-radius:10px;padding:14px;border:1px solid #ccd8d0}input{min-width:0;flex:1;background:white}button{background:#16795f;color:white;border:none;cursor:pointer;font-weight:600}button:disabled{opacity:.5;cursor:wait}#searchForm{margin:32px 0}#searchForm input{font-size:18px}section{background:white;border:1px solid #dce4de;border-radius:16px;padding:24px;margin:32px 0}h2{font-size:18px;margin:0 0 8px}.hint{font-size:13px;margin:8px 0 18px}#status{font-size:13px;overflow-wrap:anywhere}article{padding:22px 0;border-bottom:1px solid #dce4de}article a{color:#126f57;font-size:21px;text-decoration:none;font-weight:650}article a:hover{text-decoration:underline}article small{display:block;overflow-wrap:anywhere;margin:8px 0}article p{margin:8px 0;font-size:14px}#summary{font-size:14px;color:#63756d}footer{margin-top:60px;font-size:12px;color:#63756d}@media(max-width:600px){main{margin-top:40px}#crawlForm{flex-wrap:wrap}#crawlForm input{flex-basis:100%}header small{display:none}section{padding:18px}button{padding:12px}}
 mark{background:#d7efac;color:inherit;border-radius:3px}#pagination{display:flex;gap:14px;align-items:center;margin:24px 0}#pagination[hidden]{display:none}
 .page-row{padding:18px 0;border-bottom:1px solid #dce4de}.page-row a{display:block;color:#126f57;overflow-wrap:anywhere}.page-row small{display:block;margin:7px 0;overflow-wrap:anywhere}.actions{display:flex;gap:8px}.actions button{padding:8px 12px;font-size:13px}.danger{background:#9d4039}#libraryNav{display:flex;align-items:center;gap:12px;margin-top:18px}#libraryNav[hidden]{display:none}
+details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;overflow-wrap:anywhere}details li{font-size:13px;overflow-wrap:anywhere;margin:10px 0}details p{font-size:13px}
 </style>
 <header><div class="brand">little<span class="dot">●</span>search</div><small>あなたが育てる、小さな検索エンジン</small></header>
 <main><div class="eyebrow">YOUR CORNER OF THE WEB</div><h1>気になるWebを、探せる場所に。</h1><p>URLを登録して、自分だけの検索インデックスを作りましょう。</p>
@@ -11,6 +12,7 @@ mark{background:#d7efac;color:inherit;border-radius:3px}#pagination{display:flex
 <div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
 <section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p></section>
 <section><h2>登録済みページ</h2><p class="hint">保存したページを確認・更新・削除できます。</p><form id="libraryForm"><input id="libraryQuery" placeholder="タイトル・URLで絞り込み" aria-label="登録済みページの絞り込み" maxlength="200"><button>絞り込む</button></form><p id="libraryStatus" role="status"></p><div id="library"></div><nav id="libraryNav" aria-label="登録済みページのページ送り" hidden><button id="libraryPrev">前へ</button><span id="libraryPage"></span><button id="libraryNext">次へ</button></nav></section>
+<section><h2>クロール履歴</h2><p class="hint">最近20回の実行結果。行を開くとページごとの結果を確認できます。</p><p id="historyStatus" role="status"></p><div id="history"></div></section>
 <footer>Little Search · ローカルで動く全文検索 · <span id="total">0</span>ページ登録済み</footer></main>
 <script>
 const $=id=>document.getElementById(id);let wasRunning=false;
@@ -77,6 +79,22 @@ async function loadLibrary(page=libraryPage){
 $('libraryForm').addEventListener('submit',e=>{e.preventDefault();libraryQuery=$('libraryQuery').value.trim();loadLibrary(1)});
 $('libraryPrev').addEventListener('click',()=>loadLibrary(libraryPage-1));
 $('libraryNext').addEventListener('click',()=>loadLibrary(libraryPage+1));
-async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message;$('crawlButton').disabled=data.running;if(wasRunning&&!data.running){loadLibrary();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
-loadLibrary();refresh();setInterval(refresh,1500);
+const statusLabels={running:'実行中',completed:'完了',partial:'一部スキップ・失敗',failed:'失敗',interrupted:'中断',success:'成功',skipped:'スキップ'};
+async function loadHistory(){
+    try{
+        const data=await api('/api/crawls');
+        const open=new Set([...$('history').querySelectorAll('details[open]')].map(node=>node.dataset.id));
+        $('history').replaceChildren();$('historyStatus').textContent=data.results.length?'':'まだクロール履歴はありません。';
+        for(const run of data.results){
+            const details=document.createElement('details'),summary=document.createElement('summary'),info=document.createElement('p'),list=document.createElement('ul');
+            details.dataset.id=String(run.id);details.open=open.has(String(run.id));
+            summary.textContent=`${statusLabels[run.status]||run.status} · ${run.indexed}ページ · ${run.seed}`;
+            info.textContent=`${run.started} → ${run.finished||'実行中'} · ${run.message}`;
+            for(const event of run.events){const li=document.createElement('li');li.textContent=`${statusLabels[event.status]||event.status} · ${event.url} — ${event.reason}`;list.append(li)}
+            details.append(summary,info,list);$('history').append(details);
+        }
+    }catch(error){$('historyStatus').textContent=error.message}
+}
+async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
+loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
 </script></html>

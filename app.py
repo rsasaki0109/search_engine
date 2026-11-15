@@ -19,7 +19,7 @@ DB = Path(__file__).with_name('search.db')
 AGENT = 'LittleSearch/1.0'
 MAX_BYTES = 2_000_000
 crawl_lock = threading.Lock()
-state = {'running': False, 'message': 'URLを登録して検索を始めましょう', 'indexed': 0}
+state = {'running': False, 'message': 'URLを登録して検索を始めましょう', 'indexed': 0, 'current_url': '', 'processed': 0, 'limit': 0}
 state_lock = threading.Lock()
 
 
@@ -33,6 +33,18 @@ def init_db():
     with connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS pages (url TEXT PRIMARY KEY, title TEXT, body TEXT, updated TEXT)')
         db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(url UNINDEXED, title, body, tokenize='trigram')")
+        db.execute("CREATE TABLE IF NOT EXISTS crawls (id INTEGER PRIMARY KEY, seed TEXT, started TEXT, finished TEXT, status TEXT, indexed INTEGER, message TEXT, events TEXT)")
+        db.execute("UPDATE crawls SET status='interrupted', finished=?, message='サーバー停止により中断しました' WHERE status='running'", (utc_now(),))
+
+
+def utc_now():
+    return time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+
+
+def crawl_history():
+    with connect() as db:
+        rows = db.execute('SELECT * FROM crawls ORDER BY id DESC LIMIT 20').fetchall()
+    return [{**dict(row), 'events': json.loads(row['events'])} for row in rows]
 
 
 def public_url(url):
@@ -153,8 +165,21 @@ def search(query):
 
 
 def crawl(seed, limit):
-    indexed, errors = 0, []
+    indexed, errors, events = 0, [], []
+    run_id = None
+    message, outcome = 'クロールを開始できませんでした', 'failed'
+    def record(url, status, reason):
+        events.append({'url': url, 'status': status, 'reason': reason})
+        with connect() as db:
+            db.execute('UPDATE crawls SET indexed=?, events=? WHERE id=?', (indexed, json.dumps(events, ensure_ascii=False), run_id))
+        with state_lock:
+            state.update(processed=len(events), indexed=indexed)
     try:
+        with connect() as db:
+            run_id = db.execute("INSERT INTO crawls(seed,started,status,indexed,message,events) VALUES (?,?,'running',0,'クロール中','[]')", (seed, utc_now())).lastrowid
+            db.execute('DELETE FROM crawls WHERE id NOT IN (SELECT id FROM crawls ORDER BY id DESC LIMIT 20)')
+        with state_lock:
+            state.update(current_url=seed, processed=0, limit=limit)
         seed = public_url(seed)
         origin = urlsplit(seed).netloc
         robots = RobotFileParser()
@@ -171,14 +196,19 @@ def crawl(seed, limit):
             if url in seen:
                 continue
             seen.add(url)
+            with state_lock:
+                state.update(current_url=url)
             if not robots.can_fetch(AGENT, url):
                 errors.append('robots.txtで拒否: ' + url)
+                record(url, 'skipped', 'robots.txtで拒否')
                 continue
             try:
                 raw, mime, final = fetch(url)
                 if urlsplit(final).netloc != origin:
                     raise ValueError('別サイトへのリダイレクトは対象外です')
                 if mime not in ('text/html', 'application/xhtml+xml'):
+                    record(url, 'skipped', 'HTML以外のコンテンツ: ' + mime)
+                    time.sleep(1)
                     continue
                 page = Page()
                 page.feed(raw)
@@ -186,6 +216,7 @@ def crawl(seed, limit):
                 body = re.sub(r'\s+', ' ', ' '.join(page.text)).strip()
                 save_page(final, title, body)
                 indexed += 1
+                record(url, 'success', '登録しました')
                 for link in page.links:
                     parts = urlsplit(urljoin(final, link))
                     linked = urlunsplit((parts.scheme, parts.netloc, parts.path or '/', parts.query, ''))
@@ -195,16 +226,23 @@ def crawl(seed, limit):
                     state.update(message=f'{indexed}ページを登録中…', indexed=indexed)
             except Exception as exc:
                 errors.append(f'{url}: {exc}')
+                record(url, 'failed', str(exc))
             time.sleep(1)
+        outcome = 'completed' if not errors else 'partial'
         message = f'{indexed}ページを登録しました'
         if errors:
             message += f'（スキップ・エラー {len(errors)}件: {errors[0]}）'
     except Exception as exc:
         message = str(exc)
     finally:
-        with state_lock:
-            state.update(running=False, message=message, indexed=indexed)
-        crawl_lock.release()
+        try:
+            if run_id is not None:
+                with connect() as db:
+                    db.execute('UPDATE crawls SET finished=?,status=?,indexed=?,message=? WHERE id=?', (utc_now(), outcome, indexed, message, run_id))
+        finally:
+            with state_lock:
+                state.update(running=False, message=message, indexed=indexed, current_url='')
+            crawl_lock.release()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -232,6 +270,8 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
             self.reply(list_pages(params.get('q', [''])[0], page))
+        elif path.path == '/api/crawls':
+            self.reply({'results': crawl_history()})
         elif path.path == '/api/status':
             with connect() as db:
                 count = db.execute('SELECT count(*) FROM pages').fetchone()[0]
@@ -278,7 +318,7 @@ class Handler(BaseHTTPRequestHandler):
         if not crawl_lock.acquire(blocking=False):
             return self.reply({'error': 'クロール実行中です'}, 409)
         with state_lock:
-            state.update(running=True, message='robots.txtを確認中…', indexed=0)
+            state.update(running=True, message='robots.txtを確認中…', indexed=0, processed=0, current_url=seed, limit=limit)
         threading.Thread(target=crawl, args=(seed, limit), daemon=True).start()
         self.reply({'ok': True}, 202)
 

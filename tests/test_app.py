@@ -67,6 +67,40 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(len(app.search('searchable')), 11)
         self.assertEqual(app.list_pages('/00')['results'], [])
 
+    def test_crawl_history_records_outcomes_and_survives_restart(self):
+        fixtures = {
+            'https://example.com/robots.txt': ('User-agent: *\nDisallow: /blocked', 'text/plain', 'https://example.com/robots.txt'),
+            'https://example.com/': ('<title>Home</title><a href="/blocked">blocked</a><a href="/pdf">PDF</a><a href="/error">error</a>', 'text/html', 'https://example.com/'),
+            'https://example.com/pdf': ('data', 'application/pdf', 'https://example.com/pdf'),
+        }
+        def fetch(url):
+            if url.endswith('/error'):
+                raise ValueError('テスト用の取得失敗')
+            return fixtures[url]
+        app.crawl_lock.acquire()
+        with patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=fetch), patch.object(app.time, 'sleep'):
+            app.crawl('https://example.com/', 10)
+        self.assertFalse(app.crawl_lock.locked())
+        run = app.crawl_history()[0]
+        self.assertEqual(run['status'], 'partial')
+        self.assertEqual(run['indexed'], 1)
+        self.assertEqual([e['status'] for e in run['events']], ['success', 'skipped', 'skipped', 'failed'])
+        self.assertIn('取得失敗', run['events'][-1]['reason'])
+        app.init_db()
+        self.assertEqual(app.crawl_history()[0], run)
+
+    def test_crawl_failure_and_interrupted_history(self):
+        app.crawl_lock.acquire()
+        with patch.object(app, 'public_url', side_effect=ValueError('URL拒否')):
+            app.crawl('http://localhost/', 1)
+        self.assertEqual(app.crawl_history()[0]['status'], 'failed')
+        self.assertIn('URL拒否', app.crawl_history()[0]['message'])
+        with app.connect() as db:
+            db.execute("INSERT INTO crawls(seed,started,status,indexed,message,events) VALUES ('https://example.com',?,'running',0,'','[]')", (app.utc_now(),))
+        app.init_db()
+        self.assertEqual(app.crawl_history()[0]['status'], 'interrupted')
+        self.assertTrue(app.crawl_history()[0]['finished'])
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')
