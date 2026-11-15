@@ -133,6 +133,21 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(app.crawl_history()[0]['indexed'], 0)
         self.assertFalse(app.crawl_lock.locked())
 
+    def test_site_filter_exact_host_and_counts(self):
+        for host in ['example.com', 'docs.example.com', 'example.com.evil.test']:
+            for i in range(12):
+                app.save_page(f'https://{host}/{i:02}', '検索 Python', '検索本文')
+        self.assertEqual(len(app.list_sites()), 3)
+        self.assertTrue(all(site['count'] == 12 for site in app.list_sites()))
+        for query in ['検索', 'Python']:
+            result = app.search_page(query, page=2, site='EXAMPLE.COM.')
+            self.assertEqual((result['total'], len(result['results'])), (12, 2))
+            self.assertTrue(all(row['url'].startswith('https://example.com/') for row in result['results']))
+            self.assertEqual(app.search_page(query, site='missing.test')['total'], 0)
+            self.assertEqual(app.search_page(query, site="example.com' OR 1=1")['total'], 0)
+        app.delete_page('https://example.com/00')
+        self.assertEqual(next(site['count'] for site in app.list_sites() if site['host'] == 'example.com'), 11)
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')

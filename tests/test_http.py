@@ -69,6 +69,18 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(self.request('GET', '/api/pages?page=invalid')[0], 400)
         self.assertEqual(self.request('GET', '/missing')[0], 404)
 
+    def test_site_filter_api(self):
+        app.save_page('https://example.com/', 'Python', 'body')
+        app.save_page('https://other.test/', 'Python', 'body')
+        status, body = self.request('GET', '/api/sites')
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)['results'], [{'host': 'example.com', 'count': 1}, {'host': 'other.test', 'count': 1}])
+        status, body = self.request('GET', '/api/search?q=Python&site=example.com')
+        self.assertEqual(status, 200)
+        data = json.loads(body)
+        self.assertEqual(data['total'], 1)
+        self.assertEqual(data['results'][0]['url'], 'https://example.com/')
+
     def test_delete_updates_search_library_and_count(self):
         url = 'https://example.com/'
         app.save_page(url, 'Python', 'Searchable body')

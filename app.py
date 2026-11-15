@@ -26,6 +26,7 @@ state_lock = threading.Lock()
 
 def connect():
     db = sqlite3.connect(DB, timeout=10)
+    db.create_function('url_host', 1, lambda url: (urlsplit(url).hostname or '').lower().rstrip('.'), deterministic=True)
     db.row_factory = sqlite3.Row
     return db
 
@@ -136,7 +137,12 @@ def excerpt(body, tokens, size=260):
     return ('…' if start else '') + body[start:end] + ('…' if end < len(body) else '')
 
 
-def search_page(query, page=1, page_size=10):
+def list_sites():
+    with connect() as db:
+        return [dict(row) for row in db.execute('SELECT url_host(url) AS host, count(*) AS count FROM pages GROUP BY url_host(url) ORDER BY host')]
+
+
+def search_page(query, page=1, page_size=10, site=''):
     query = query.strip()[:200]
     page = max(1, min(1000000, page))
     if not query:
@@ -153,6 +159,9 @@ def search_page(query, page=1, page_size=10):
             where = ' AND '.join('(instr(lower(title),lower(?))>0 OR instr(lower(body),lower(?))>0)' for _ in tokens)
             params = tuple(t for t in tokens for _ in range(2))
             order = 'url'
+        if site.strip():
+            where = f'({where}) AND url_host(url) = ?'
+            params = (*params, site.strip().lower().rstrip('.'))
         total = db.execute(f'SELECT count(*) FROM {source} WHERE {where}', params).fetchone()[0]
         pages = (total + page_size - 1) // page_size
         page = min(page, max(1, pages))
@@ -271,7 +280,7 @@ class Handler(BaseHTTPRequestHandler):
                 page = int(params.get('page', ['1'])[0])
             except ValueError:
                 return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
-            self.reply(search_page(params.get('q', [''])[0], page))
+            self.reply(search_page(params.get('q', [''])[0], page, site=params.get('site', [''])[0]))
         elif path.path == '/api/pages':
             params = parse_qs(path.query)
             try:
@@ -279,6 +288,8 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
             self.reply(list_pages(params.get('q', [''])[0], page))
+        elif path.path == '/api/sites':
+            self.reply({'results': list_sites()})
         elif path.path == '/api/crawls':
             self.reply({'results': crawl_history()})
         elif path.path == '/api/status':

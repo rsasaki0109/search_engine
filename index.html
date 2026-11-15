@@ -5,10 +5,12 @@
 mark{background:#d7efac;color:inherit;border-radius:3px}#pagination{display:flex;gap:14px;align-items:center;margin:24px 0}#pagination[hidden]{display:none}
 .page-row{padding:18px 0;border-bottom:1px solid #dce4de}.page-row a{display:block;color:#126f57;overflow-wrap:anywhere}.page-row small{display:block;margin:7px 0;overflow-wrap:anywhere}.actions{display:flex;gap:8px}.actions button{padding:8px 12px;font-size:13px}.danger{background:#9d4039}#libraryNav{display:flex;align-items:center;gap:12px;margin-top:18px}#libraryNav[hidden]{display:none}
 details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;overflow-wrap:anywhere}details li{font-size:13px;overflow-wrap:anywhere;margin:10px 0}details p{font-size:13px}
+.site-filter{display:flex;align-items:center;gap:12px;margin:-12px 0 20px;font-size:14px;color:#63756d}.site-filter select{max-width:75%;padding:10px}#siteStatus{font-size:13px}
 </style>
 <header><div class="brand">little<span class="dot">●</span>search</div><small>あなたが育てる、小さな検索エンジン</small></header>
 <main><div class="eyebrow">YOUR CORNER OF THE WEB</div><h1>気になるWebを、探せる場所に。</h1><p>URLを登録して、自分だけの検索インデックスを作りましょう。</p>
 <form id="searchForm"><input id="query" aria-label="検索キーワード" placeholder="登録したページを検索" maxlength="200" required><button>検索</button></form>
+<label class="site-filter">検索対象 <select id="siteFilter" aria-label="検索対象のサイト"><option value="">すべてのサイト</option></select></label><p id="siteStatus" role="status"></p>
 <div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
 <section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p><button id="cancelCrawl" class="danger" hidden>クロールを停止</button></section>
 <section><h2>登録済みページ</h2><p class="hint">保存したページを確認・更新・削除できます。</p><form id="libraryForm"><input id="libraryQuery" placeholder="タイトル・URLで絞り込み" aria-label="登録済みページの絞り込み" maxlength="200"><button>絞り込む</button></form><p id="libraryStatus" role="status"></p><div id="library"></div><nav id="libraryNav" aria-label="登録済みページのページ送り" hidden><button id="libraryPrev">前へ</button><span id="libraryPage"></span><button id="libraryNext">次へ</button></nav></section>
@@ -17,7 +19,7 @@ details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;ov
 <script>
 const $=id=>document.getElementById(id);let wasRunning=false;
 async function api(path,options){const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.error||'通信に失敗しました');return data}
-let activeQuery='', currentPage=1, requestId=0;
+let activeQuery='', activeSite='', currentPage=1, requestId=0;
 function highlighted(node,text,query){
     const tokens=query.trim().split(/\s+/).filter(Boolean).sort((a,b)=>b.length-a.length);
     if(!tokens.length){node.textContent=text;return}
@@ -34,7 +36,7 @@ async function runSearch(page=1){
     const id=++requestId, query=activeQuery;
     $('summary').textContent='検索中…';$('pagination').hidden=true;
     try{
-        const data=await api('/api/search?q='+encodeURIComponent(query)+'&page='+page);
+        const data=await api('/api/search?q='+encodeURIComponent(query)+'&page='+page+'&site='+encodeURIComponent(activeSite));
         if(id!==requestId)return;
         currentPage=data.page;$('results').replaceChildren();
         $('summary').textContent=data.total?`${data.total}件の結果 · ${(data.page-1)*10+1}–${(data.page-1)*10+data.results.length}件を表示`:'見つかりませんでした。別のキーワードで検索するか、ページを登録してください。';
@@ -47,6 +49,18 @@ async function runSearch(page=1){
     }catch(error){if(id===requestId){$('results').replaceChildren();$('summary').textContent=error.message}}
 }
 $('searchForm').addEventListener('submit',e=>{e.preventDefault();activeQuery=$('query').value.trim();runSearch()});
+$('siteFilter').addEventListener('change',()=>{activeSite=$('siteFilter').value;if(activeQuery)runSearch()});
+let sitesRequest=0;
+async function loadSites(){
+    const id=++sitesRequest;
+    try{
+        const data=await api('/api/sites');if(id!==sitesRequest)return;
+        const select=$('siteFilter');select.replaceChildren(new Option('すべてのサイト',''));
+        for(const site of data.results)select.add(new Option(`${site.host} (${site.count})`,site.host));
+        if(activeSite&&!data.results.some(site=>site.host===activeSite))select.add(new Option(`${activeSite} (0)`,activeSite));
+        select.value=activeSite;$('siteStatus').textContent='';
+    }catch(error){if(id===sitesRequest)$('siteStatus').textContent='サイト一覧を取得できません: '+error.message}
+}
 $('previous').addEventListener('click',()=>runSearch(currentPage-1));
 $('next').addEventListener('click',()=>runSearch(currentPage+1));
 $('crawlForm').addEventListener('submit',async e=>{e.preventDefault();$('crawlButton').disabled=true;try{await api('/api/crawl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:$('url').value,limit:Number($('limit').value)})});await refresh()}catch(error){$('status').textContent=error.message;$('crawlButton').disabled=false}});
@@ -67,7 +81,7 @@ async function loadLibrary(page=libraryPage){
                     button.disabled=true;
                     try{
                         await api(remove?'/api/pages/delete':'/api/crawl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:item.url,limit:1})});
-                        await refresh();await loadLibrary();if(remove&&activeQuery)await runSearch(currentPage);
+                        await refresh();await loadLibrary();await loadSites();if(remove&&activeQuery)await runSearch(currentPage);
                     }catch(error){$('libraryStatus').textContent=error.message}finally{button.disabled=false}
                 });actions.append(button);
             }
@@ -100,6 +114,6 @@ $('cancelCrawl').addEventListener('click',async()=>{
     try{await api('/api/crawl/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await refresh()}
     catch(error){$('status').textContent=error.message;$('cancelCrawl').disabled=false}
 });
-async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;$('cancelCrawl').hidden=!data.running;$('cancelCrawl').disabled=data.cancelling;$('cancelCrawl').textContent=data.cancelling?'停止処理中…':'クロールを停止';if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
-loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
+async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;$('cancelCrawl').hidden=!data.running;$('cancelCrawl').disabled=data.cancelling;$('cancelCrawl').textContent=data.cancelling?'停止処理中…':'クロールを停止';if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();loadSites();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
+loadSites();loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
 </script></html>
