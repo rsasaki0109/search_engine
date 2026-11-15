@@ -10,7 +10,7 @@ details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;ov
 <main><div class="eyebrow">YOUR CORNER OF THE WEB</div><h1>気になるWebを、探せる場所に。</h1><p>URLを登録して、自分だけの検索インデックスを作りましょう。</p>
 <form id="searchForm"><input id="query" aria-label="検索キーワード" placeholder="登録したページを検索" maxlength="200" required><button>検索</button></form>
 <div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
-<section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p></section>
+<section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p><button id="cancelCrawl" class="danger" hidden>クロールを停止</button></section>
 <section><h2>登録済みページ</h2><p class="hint">保存したページを確認・更新・削除できます。</p><form id="libraryForm"><input id="libraryQuery" placeholder="タイトル・URLで絞り込み" aria-label="登録済みページの絞り込み" maxlength="200"><button>絞り込む</button></form><p id="libraryStatus" role="status"></p><div id="library"></div><nav id="libraryNav" aria-label="登録済みページのページ送り" hidden><button id="libraryPrev">前へ</button><span id="libraryPage"></span><button id="libraryNext">次へ</button></nav></section>
 <section><h2>クロール履歴</h2><p class="hint">最近20回の実行結果。行を開くとページごとの結果を確認できます。</p><p id="historyStatus" role="status"></p><div id="history"></div></section>
 <footer>Little Search · ローカルで動く全文検索 · <span id="total">0</span>ページ登録済み</footer></main>
@@ -79,7 +79,7 @@ async function loadLibrary(page=libraryPage){
 $('libraryForm').addEventListener('submit',e=>{e.preventDefault();libraryQuery=$('libraryQuery').value.trim();loadLibrary(1)});
 $('libraryPrev').addEventListener('click',()=>loadLibrary(libraryPage-1));
 $('libraryNext').addEventListener('click',()=>loadLibrary(libraryPage+1));
-const statusLabels={running:'実行中',completed:'完了',partial:'一部スキップ・失敗',failed:'失敗',interrupted:'中断',success:'成功',skipped:'スキップ'};
+const statusLabels={cancelled:'キャンセル',running:'実行中',completed:'完了',partial:'一部スキップ・失敗',failed:'失敗',interrupted:'中断',success:'成功',skipped:'スキップ'};
 async function loadHistory(){
     try{
         const data=await api('/api/crawls');
@@ -95,6 +95,11 @@ async function loadHistory(){
         }
     }catch(error){$('historyStatus').textContent=error.message}
 }
-async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
+$('cancelCrawl').addEventListener('click',async()=>{
+    $('cancelCrawl').disabled=true;
+    try{await api('/api/crawl/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await refresh()}
+    catch(error){$('status').textContent=error.message;$('cancelCrawl').disabled=false}
+});
+async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;$('cancelCrawl').hidden=!data.running;$('cancelCrawl').disabled=data.cancelling;$('cancelCrawl').textContent=data.cancelling?'停止処理中…':'クロールを停止';if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
 loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
 </script></html>

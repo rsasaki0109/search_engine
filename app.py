@@ -19,7 +19,8 @@ DB = Path(__file__).with_name('search.db')
 AGENT = 'LittleSearch/1.0'
 MAX_BYTES = 2_000_000
 crawl_lock = threading.Lock()
-state = {'running': False, 'message': 'URLを登録して検索を始めましょう', 'indexed': 0, 'current_url': '', 'processed': 0, 'limit': 0}
+cancel_event = threading.Event()
+state = {'running': False, 'message': 'URLを登録して検索を始めましょう', 'indexed': 0, 'current_url': '', 'processed': 0, 'limit': 0, 'cancelling': False}
 state_lock = threading.Lock()
 
 
@@ -180,6 +181,8 @@ def crawl(seed, limit):
             db.execute('DELETE FROM crawls WHERE id NOT IN (SELECT id FROM crawls ORDER BY id DESC LIMIT 20)')
         with state_lock:
             state.update(current_url=seed, processed=0, limit=limit)
+        if cancel_event.is_set():
+            raise ValueError('停止要求を受け付けました')
         seed = public_url(seed)
         origin = urlsplit(seed).netloc
         robots = RobotFileParser()
@@ -191,7 +194,7 @@ def crawl(seed, limit):
                 raise ValueError('robots.txtを確認できませんでした') from exc
             robots.parse([])
         queue, seen = [seed], set()
-        while queue and len(seen) < limit:
+        while queue and len(seen) < limit and not cancel_event.is_set():
             url = queue.pop(0)
             if url in seen:
                 continue
@@ -208,7 +211,7 @@ def crawl(seed, limit):
                     raise ValueError('別サイトへのリダイレクトは対象外です')
                 if mime not in ('text/html', 'application/xhtml+xml'):
                     record(url, 'skipped', 'HTML以外のコンテンツ: ' + mime)
-                    time.sleep(1)
+                    cancel_event.wait(1)
                     continue
                 page = Page()
                 page.feed(raw)
@@ -227,7 +230,7 @@ def crawl(seed, limit):
             except Exception as exc:
                 errors.append(f'{url}: {exc}')
                 record(url, 'failed', str(exc))
-            time.sleep(1)
+            cancel_event.wait(1)
         outcome = 'completed' if not errors else 'partial'
         message = f'{indexed}ページを登録しました'
         if errors:
@@ -236,13 +239,19 @@ def crawl(seed, limit):
         message = str(exc)
     finally:
         try:
-            if run_id is not None:
-                with connect() as db:
-                    db.execute('UPDATE crawls SET finished=?,status=?,indexed=?,message=? WHERE id=?', (utc_now(), outcome, indexed, message, run_id))
-        finally:
             with state_lock:
-                state.update(running=False, message=message, indexed=indexed, current_url='')
+                if cancel_event.is_set():
+                    outcome = 'cancelled'
+                    message = f'クロールを停止しました（{indexed}ページ保存済み）'
+                try:
+                    if run_id is not None:
+                        with connect() as db:
+                            db.execute('UPDATE crawls SET finished=?,status=?,indexed=?,message=? WHERE id=?', (utc_now(), outcome, indexed, message, run_id))
+                finally:
+                    state.update(running=False, cancelling=False, message=message, indexed=indexed, current_url='')
+        finally:
             crawl_lock.release()
+
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -289,13 +298,20 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'error': 'Not found'}, 404)
 
     def do_POST(self):
-        if self.path not in ('/api/crawl', '/api/pages/delete'):
+        if self.path not in ('/api/crawl', '/api/pages/delete', '/api/crawl/cancel'):
             return self.reply({'error': 'Not found'}, 404)
         # Disallow requests from other websites to this local service.
         if self.headers.get('Origin') and self.headers['Origin'] != 'http://' + self.headers.get('Host', ''):
             return self.reply({'error': 'Origin is not allowed'}, 403)
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
             return self.reply({'error': 'JSON required'}, 415)
+        if self.path == '/api/crawl/cancel':
+            with state_lock:
+                if not state['running']:
+                    return self.reply({'error': '実行中のクロールはありません'}, 409)
+                cancel_event.set()
+                state.update(cancelling=True, message='停止要求を受け付けました。処理中の取得が終了するまでお待ちください')
+            return self.reply({'ok': True}, 202)
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if not 0 < length <= 4096:
@@ -318,7 +334,8 @@ class Handler(BaseHTTPRequestHandler):
         if not crawl_lock.acquire(blocking=False):
             return self.reply({'error': 'クロール実行中です'}, 409)
         with state_lock:
-            state.update(running=True, message='robots.txtを確認中…', indexed=0, processed=0, current_url=seed, limit=limit)
+            cancel_event.clear()
+            state.update(cancelling=False, running=True, message='robots.txtを確認中…', indexed=0, processed=0, current_url=seed, limit=limit)
         threading.Thread(target=crawl, args=(seed, limit), daemon=True).start()
         self.reply({'ok': True}, 202)
 

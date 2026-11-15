@@ -11,8 +11,10 @@ class SearchTests(unittest.TestCase):
         self.original = app.DB
         app.DB = Path(self.temp.name) / 'test.db'
         app.init_db()
+        app.cancel_event.clear()
 
     def tearDown(self):
+        app.cancel_event.clear()
         app.DB = self.original
         self.temp.cleanup()
 
@@ -78,7 +80,7 @@ class SearchTests(unittest.TestCase):
                 raise ValueError('テスト用の取得失敗')
             return fixtures[url]
         app.crawl_lock.acquire()
-        with patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=fetch), patch.object(app.time, 'sleep'):
+        with patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=fetch), patch.object(app.cancel_event, 'wait', return_value=False):
             app.crawl('https://example.com/', 10)
         self.assertFalse(app.crawl_lock.locked())
         run = app.crawl_history()[0]
@@ -100,6 +102,36 @@ class SearchTests(unittest.TestCase):
         app.init_db()
         self.assertEqual(app.crawl_history()[0]['status'], 'interrupted')
         self.assertTrue(app.crawl_history()[0]['finished'])
+
+    def test_cancel_preserves_page_and_does_not_fetch_next(self):
+        fetched = []
+        def fetch(url):
+            fetched.append(url)
+            if url.endswith('/robots.txt'):
+                return ('User-agent: *\nAllow: /', 'text/plain', url)
+            app.cancel_event.set()
+            return ('<title>Saved</title><a href="/next">Next</a>', 'text/html', url)
+        app.crawl_lock.acquire()
+        with patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=fetch):
+            app.crawl('https://example.com/', 10)
+        run = app.crawl_history()[0]
+        self.assertEqual(run['status'], 'cancelled')
+        self.assertEqual(run['indexed'], 1)
+        self.assertNotIn('https://example.com/next', fetched)
+        self.assertEqual(len(app.search('Saved')), 1)
+        self.assertFalse(app.crawl_lock.locked())
+        self.assertFalse(app.state['running'])
+        self.assertFalse(app.state['cancelling'])
+
+    def test_cancel_before_first_request(self):
+        app.cancel_event.set()
+        app.crawl_lock.acquire()
+        with patch.object(app, 'fetch') as fetch:
+            app.crawl('https://example.com/', 10)
+            fetch.assert_not_called()
+        self.assertEqual(app.crawl_history()[0]['status'], 'cancelled')
+        self.assertEqual(app.crawl_history()[0]['indexed'], 0)
+        self.assertFalse(app.crawl_lock.locked())
 
     def test_html_extraction(self):
         page = app.Page()
