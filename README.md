@@ -1,5 +1,7 @@
 # Little Search
 
+[![Tests](https://github.com/rsasaki0109/search_engine/actions/workflows/tests.yml/badge.svg)](https://github.com/rsasaki0109/search_engine/actions/workflows/tests.yml)
+
 **気になるWebを、探せる場所に。**
 
 ![Little Search — URL登録と日本語・英語の検索画面デモ](assets/hero.gif)
@@ -35,6 +37,8 @@ http://127.0.0.1:8000 を開いてURLを登録してください。ポート変�
 データは `search.db` に保存されます。停止後に削除すると初期化できます。
 
 ## テスト
+
+push・PR時にGitHub ActionsでPython 3.11 / 3.12 / 3.13のテストを実行します。HTTPテストは一時DBとローカルサーバーを使い、外部サイトには接続しません。
 
 ```sh
 python -m unittest discover -s tests -v
