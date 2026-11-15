@@ -1,0 +1,206 @@
+{
+  "sites": [
+    {
+      "id": "python",
+      "seed": "https://docs.python.org/ja/3/"
+    },
+    {
+      "id": "sqlite",
+      "seed": "https://www.sqlite.org/docs.html"
+    },
+    {
+      "id": "mdn",
+      "seed": "https://developer.mozilla.org/ja/docs/Web"
+    },
+    {
+      "id": "postgresql",
+      "seed": "https://www.postgresql.org/docs/current/"
+    },
+    {
+      "id": "git",
+      "seed": "https://git-scm.com/docs"
+    }
+  ],
+  "cases": [
+    {
+      "id": "python-1",
+      "site": "python",
+      "task": "JSONをPythonで読み書きする",
+      "query": "json dumps",
+      "expected_urls": [
+        "https://docs.python.org/ja/3/library/json.html"
+      ]
+    },
+    {
+      "id": "python-2",
+      "site": "python",
+      "task": "ファイルパスを扱う",
+      "query": "pathlib",
+      "expected_urls": [
+        "https://docs.python.org/ja/3/library/pathlib.html"
+      ]
+    },
+    {
+      "id": "python-3",
+      "site": "python",
+      "task": "PythonからSQLiteへ接続する",
+      "query": "sqlite3 connect",
+      "expected_urls": [
+        "https://docs.python.org/ja/3/library/sqlite3.html"
+      ]
+    },
+    {
+      "id": "python-4",
+      "site": "python",
+      "task": "コマンドライン引数を解析する",
+      "query": "argparse",
+      "expected_urls": [
+        "https://docs.python.org/ja/3/library/argparse.html"
+      ]
+    },
+    {
+      "id": "sqlite-1",
+      "site": "sqlite",
+      "task": "全文検索のランキングを調べる",
+      "query": "FTS5 bm25",
+      "expected_urls": [
+        "https://www.sqlite.org/fts5.html"
+      ]
+    },
+    {
+      "id": "sqlite-2",
+      "site": "sqlite",
+      "task": "SELECTの並び替えを調べる",
+      "query": "SELECT ORDER BY",
+      "expected_urls": [
+        "https://www.sqlite.org/lang_select.html"
+      ]
+    },
+    {
+      "id": "sqlite-3",
+      "site": "sqlite",
+      "task": "既存行と競合したら更新する",
+      "query": "UPSERT",
+      "expected_urls": [
+        "https://www.sqlite.org/lang_upsert.html"
+      ]
+    },
+    {
+      "id": "sqlite-4",
+      "site": "sqlite",
+      "task": "WALモードの動作を調べる",
+      "query": "write ahead log",
+      "expected_urls": [
+        "https://www.sqlite.org/wal.html"
+      ]
+    },
+    {
+      "id": "mdn-1",
+      "site": "mdn",
+      "task": "Fetchで通信する",
+      "query": "fetch",
+      "expected_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/API/Fetch_API/Using_Fetch"
+      ]
+    },
+    {
+      "id": "mdn-2",
+      "site": "mdn",
+      "task": "非同期処理のPromiseを調べる",
+      "query": "Promise",
+      "expected_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise"
+      ]
+    },
+    {
+      "id": "mdn-3",
+      "site": "mdn",
+      "task": "URLを組み立てる",
+      "query": "URL",
+      "expected_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/API/URL"
+      ]
+    },
+    {
+      "id": "mdn-4",
+      "site": "mdn",
+      "task": "CORSの仕組みを調べる",
+      "query": "CORS",
+      "expected_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/CORS"
+      ]
+    },
+    {
+      "id": "postgresql-1",
+      "site": "postgresql",
+      "task": "PostgreSQLの全文検索を調べる",
+      "query": "full text search",
+      "expected_urls": [
+        "https://www.postgresql.org/docs/current/textsearch.html"
+      ]
+    },
+    {
+      "id": "postgresql-2",
+      "site": "postgresql",
+      "task": "インデックスの基本を調べる",
+      "query": "indexes",
+      "expected_urls": [
+        "https://www.postgresql.org/docs/current/indexes.html"
+      ]
+    },
+    {
+      "id": "postgresql-3",
+      "site": "postgresql",
+      "task": "クエリ実行計画を調べる",
+      "query": "EXPLAIN",
+      "expected_urls": [
+        "https://www.postgresql.org/docs/current/sql-explain.html"
+      ]
+    },
+    {
+      "id": "postgresql-4",
+      "site": "postgresql",
+      "task": "トランザクションの基本を調べる",
+      "query": "transactions",
+      "expected_urls": [
+        "https://www.postgresql.org/docs/current/tutorial-transactions.html"
+      ]
+    },
+    {
+      "id": "git-1",
+      "site": "git",
+      "task": "コミット履歴を並べ替える",
+      "query": "git rebase",
+      "expected_urls": [
+        "https://git-scm.com/docs/git-rebase"
+      ]
+    },
+    {
+      "id": "git-2",
+      "site": "git",
+      "task": "変更を一時退避する",
+      "query": "git stash",
+      "expected_urls": [
+        "https://git-scm.com/docs/git-stash"
+      ]
+    },
+    {
+      "id": "git-3",
+      "site": "git",
+      "task": "ファイルの変更を戻す",
+      "query": "git restore",
+      "expected_urls": [
+        "https://git-scm.com/docs/git-restore"
+      ]
+    },
+    {
+      "id": "git-4",
+      "site": "git",
+      "task": "コミット履歴を絞り込む",
+      "query": "git log",
+      "expected_urls": [
+        "https://git-scm.com/docs/git-log"
+      ]
+    }
+  ]
+}

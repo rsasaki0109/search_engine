@@ -1,0 +1,153 @@
+{
+  "pages": 19,
+  "cases": 20,
+  "covered": 19,
+  "hits_at_5": 19,
+  "hit_rate": 0.95,
+  "max_median_latency_ms": 3.827,
+  "quality_pass": true,
+  "scale_speed_pass": false,
+  "results": [
+    {
+      "id": "python-1",
+      "query": "json dumps",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.142
+    },
+    {
+      "id": "python-2",
+      "query": "pathlib",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.163
+    },
+    {
+      "id": "python-3",
+      "query": "sqlite3 connect",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 3.256
+    },
+    {
+      "id": "python-4",
+      "query": "argparse",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 0.712
+    },
+    {
+      "id": "sqlite-1",
+      "query": "FTS5 bm25",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 0.604
+    },
+    {
+      "id": "sqlite-2",
+      "query": "SELECT ORDER BY",
+      "covered": false,
+      "rank": null,
+      "latency_ms": 3.827
+    },
+    {
+      "id": "sqlite-3",
+      "query": "UPSERT",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 0.358
+    },
+    {
+      "id": "sqlite-4",
+      "query": "write ahead log",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 0.497
+    },
+    {
+      "id": "mdn-1",
+      "query": "fetch",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.357
+    },
+    {
+      "id": "mdn-2",
+      "query": "Promise",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 0.779
+    },
+    {
+      "id": "mdn-3",
+      "query": "URL",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.494
+    },
+    {
+      "id": "mdn-4",
+      "query": "CORS",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 0.539
+    },
+    {
+      "id": "postgresql-1",
+      "query": "full text search",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.574
+    },
+    {
+      "id": "postgresql-2",
+      "query": "indexes",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.212
+    },
+    {
+      "id": "postgresql-3",
+      "query": "EXPLAIN",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.305
+    },
+    {
+      "id": "postgresql-4",
+      "query": "transactions",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.939
+    },
+    {
+      "id": "git-1",
+      "query": "git rebase",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.542
+    },
+    {
+      "id": "git-2",
+      "query": "git stash",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.601
+    },
+    {
+      "id": "git-3",
+      "query": "git restore",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 3.461
+    },
+    {
+      "id": "git-4",
+      "query": "git log",
+      "covered": true,
+      "rank": 4,
+      "latency_ms": 0.783
+    }
+  ],
+  "measurement_note": "2026-11-15: 公式ページ19件のみの初期測定。MDN CORSの期待URLを実際のリダイレクト先へ修正済み。500ページの検証ではない。"
+}
