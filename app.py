@@ -96,6 +96,25 @@ def save_page(url, title, body):
         db.execute('INSERT INTO search VALUES (?, ?, ?)', (url, title, body))
 
 
+def list_pages(query='', page=1):
+    page = max(1, min(1000000, page))
+    params = (query.strip()[:200],) * 2
+    where = 'instr(lower(title),lower(?))>0 OR instr(lower(url),lower(?))>0'
+    with connect() as db:
+        total = db.execute(f'SELECT count(*) FROM pages WHERE {where}', params).fetchone()[0]
+        pages = (total + 9) // 10
+        page = min(page, max(1, pages))
+        rows = db.execute(f'SELECT url,title,updated FROM pages WHERE {where} ORDER BY updated DESC,url LIMIT 10 OFFSET ?', (*params, (page - 1) * 10)).fetchall()
+    return {'results': [dict(row) for row in rows], 'total': total, 'page': page, 'pages': pages}
+
+
+def delete_page(url):
+    with connect() as db:
+        deleted = db.execute('DELETE FROM pages WHERE url = ?', (url,)).rowcount
+        db.execute('DELETE FROM search WHERE url = ?', (url,))
+    return bool(deleted)
+
+
 def excerpt(body, tokens, size=260):
     pattern = re.compile('|'.join(re.escape(t) for t in tokens), re.IGNORECASE)
     found = pattern.search(body)
@@ -206,6 +225,13 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
             self.reply(search_page(params.get('q', [''])[0], page))
+        elif path.path == '/api/pages':
+            params = parse_qs(path.query)
+            try:
+                page = int(params.get('page', ['1'])[0])
+            except ValueError:
+                return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
+            self.reply(list_pages(params.get('q', [''])[0], page))
         elif path.path == '/api/status':
             with connect() as db:
                 count = db.execute('SELECT count(*) FROM pages').fetchone()[0]
@@ -223,7 +249,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'error': 'Not found'}, 404)
 
     def do_POST(self):
-        if self.path != '/api/crawl':
+        if self.path not in ('/api/crawl', '/api/pages/delete'):
             return self.reply({'error': 'Not found'}, 404)
         # Disallow requests from other websites to this local service.
         if self.headers.get('Origin') and self.headers['Origin'] != 'http://' + self.headers.get('Host', ''):
@@ -241,6 +267,14 @@ class Handler(BaseHTTPRequestHandler):
             limit = max(1, min(30, int(data.get('limit', 10))))
         except (ValueError, TypeError, AttributeError) as exc:
             return self.reply({'error': str(exc)}, 400)
+        if self.path == '/api/pages/delete':
+            if not crawl_lock.acquire(blocking=False):
+                return self.reply({'error': 'クロール完了後に削除してください'}, 409)
+            try:
+                deleted = delete_page(seed)
+            finally:
+                crawl_lock.release()
+            return self.reply({'ok': True} if deleted else {'error': 'ページが見つかりません'}, 200 if deleted else 404)
         if not crawl_lock.acquire(blocking=False):
             return self.reply({'error': 'クロール実行中です'}, 409)
         with state_lock:

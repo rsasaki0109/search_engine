@@ -54,6 +54,19 @@ class SearchTests(unittest.TestCase):
             self.assertEqual(app.search_page(query, -1)['page'], 1)
         self.assertEqual(app.search_page('missing')['pages'], 0)
 
+    def test_library_filter_pagination_and_delete(self):
+        for i in range(12):
+            app.save_page(f'https://example.com/{i:02}', f'文書 {i}', 'searchable text')
+        self.assertEqual(app.list_pages()['total'], 12)
+        self.assertEqual(len(app.list_pages(page=2)['results']), 2)
+        self.assertEqual(app.list_pages('文書 11')['total'], 1)
+        self.assertEqual(app.list_pages('/00')['total'], 1)
+        self.assertTrue(app.delete_page('https://example.com/00'))
+        self.assertFalse(app.delete_page('https://example.com/00'))
+        self.assertEqual(app.list_pages()['total'], 11)
+        self.assertEqual(len(app.search('searchable')), 11)
+        self.assertEqual(app.list_pages('/00')['results'], [])
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')
