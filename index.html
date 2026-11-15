@@ -2,17 +2,49 @@
 <html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Little Search</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#202c32;background:#f5f7f5}*{box-sizing:border-box}body{margin:0}header{padding:24px 6%;border-bottom:1px solid #dce4de;display:flex;justify-content:space-between;align-items:center}.brand{font-weight:800;letter-spacing:-1px;font-size:22px}.dot{color:#168267}small{color:#63756d}main{max-width:850px;margin:70px auto;padding:0 24px}h1{font-size:clamp(32px,6vw,48px);letter-spacing:-2px;margin:12px 0}p{color:#63756d;line-height:1.8}.eyebrow{font-size:12px;letter-spacing:2px;color:#168267;font-weight:700}form{display:flex;gap:10px}input,select,button{font:inherit;border-radius:10px;padding:14px;border:1px solid #ccd8d0}input{min-width:0;flex:1;background:white}button{background:#16795f;color:white;border:none;cursor:pointer;font-weight:600}button:disabled{opacity:.5;cursor:wait}#searchForm{margin:32px 0}#searchForm input{font-size:18px}section{background:white;border:1px solid #dce4de;border-radius:16px;padding:24px;margin:32px 0}h2{font-size:18px;margin:0 0 8px}.hint{font-size:13px;margin:8px 0 18px}#status{font-size:13px;overflow-wrap:anywhere}article{padding:22px 0;border-bottom:1px solid #dce4de}article a{color:#126f57;font-size:21px;text-decoration:none;font-weight:650}article a:hover{text-decoration:underline}article small{display:block;overflow-wrap:anywhere;margin:8px 0}article p{margin:8px 0;font-size:14px}#summary{font-size:14px;color:#63756d}footer{margin-top:60px;font-size:12px;color:#63756d}@media(max-width:600px){main{margin-top:40px}#crawlForm{flex-wrap:wrap}#crawlForm input{flex-basis:100%}header small{display:none}section{padding:18px}button{padding:12px}}
+mark{background:#d7efac;color:inherit;border-radius:3px}#pagination{display:flex;gap:14px;align-items:center;margin:24px 0}#pagination[hidden]{display:none}
 </style>
 <header><div class="brand">little<span class="dot">●</span>search</div><small>あなたが育てる、小さな検索エンジン</small></header>
 <main><div class="eyebrow">YOUR CORNER OF THE WEB</div><h1>気になるWebを、探せる場所に。</h1><p>URLを登録して、自分だけの検索インデックスを作りましょう。</p>
 <form id="searchForm"><input id="query" aria-label="検索キーワード" placeholder="登録したページを検索" maxlength="200" required><button>検索</button></form>
-<div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div>
+<div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
 <section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p></section>
 <footer>Little Search · ローカルで動く全文検索 · <span id="total">0</span>ページ登録済み</footer></main>
 <script>
 const $=id=>document.getElementById(id);let wasRunning=false;
 async function api(path,options){const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.error||'通信に失敗しました');return data}
-$('searchForm').addEventListener('submit',async e=>{e.preventDefault();$('summary').textContent='検索中…';$('results').replaceChildren();try{const data=await api('/api/search?q='+encodeURIComponent($('query').value));$('summary').textContent=data.results.length?`${data.results.length}件の結果（最大50件）`:'見つかりませんでした。別のキーワードで検索するか、ページを登録してください。';for(const item of data.results){const article=document.createElement('article'),a=document.createElement('a'),url=document.createElement('small'),p=document.createElement('p');a.textContent=item.title;a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';url.textContent=item.url;p.textContent=item.excerpt;article.append(a,url,p);$('results').append(article)}}catch(error){$('summary').textContent=error.message}});
+let activeQuery='', currentPage=1, requestId=0;
+function highlighted(node,text,query){
+    const tokens=query.trim().split(/\s+/).filter(Boolean).sort((a,b)=>b.length-a.length);
+    if(!tokens.length){node.textContent=text;return}
+    const escape=token=>token.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const pattern=new RegExp(tokens.map(escape).join('|'),'gi');
+    let start=0;
+    for(const match of text.matchAll(pattern)){
+        node.append(document.createTextNode(text.slice(start,match.index)));
+        const mark=document.createElement('mark');mark.textContent=match[0];node.append(mark);start=match.index+match[0].length;
+    }
+    node.append(document.createTextNode(text.slice(start)));
+}
+async function runSearch(page=1){
+    const id=++requestId, query=activeQuery;
+    $('summary').textContent='検索中…';$('pagination').hidden=true;
+    try{
+        const data=await api('/api/search?q='+encodeURIComponent(query)+'&page='+page);
+        if(id!==requestId)return;
+        currentPage=data.page;$('results').replaceChildren();
+        $('summary').textContent=data.total?`${data.total}件の結果 · ${(data.page-1)*10+1}–${(data.page-1)*10+data.results.length}件を表示`:'見つかりませんでした。別のキーワードで検索するか、ページを登録してください。';
+        for(const item of data.results){
+            const article=document.createElement('article'),a=document.createElement('a'),url=document.createElement('small'),p=document.createElement('p');
+            highlighted(a,item.title,query);a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';
+            url.textContent=item.url;highlighted(p,item.excerpt,query);article.append(a,url,p);$('results').append(article);
+        }
+        $('pagination').hidden=data.pages<=1;$('previous').disabled=data.page<=1;$('next').disabled=data.page>=data.pages;$('pageLabel').textContent=`${data.page} / ${data.pages}`;
+    }catch(error){if(id===requestId){$('results').replaceChildren();$('summary').textContent=error.message}}
+}
+$('searchForm').addEventListener('submit',e=>{e.preventDefault();activeQuery=$('query').value.trim();runSearch()});
+$('previous').addEventListener('click',()=>runSearch(currentPage-1));
+$('next').addEventListener('click',()=>runSearch(currentPage+1));
 $('crawlForm').addEventListener('submit',async e=>{e.preventDefault();$('crawlButton').disabled=true;try{await api('/api/crawl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:$('url').value,limit:Number($('limit').value)})});await refresh()}catch(error){$('status').textContent=error.message;$('crawlButton').disabled=false}});
 async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message;$('crawlButton').disabled=data.running;if(wasRunning&&!data.running&&$('query').value)$('searchForm').requestSubmit();wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
 refresh();setInterval(refresh,1500);

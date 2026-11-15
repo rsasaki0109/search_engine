@@ -33,6 +33,27 @@ class SearchTests(unittest.TestCase):
     def test_queries_are_literal(self):
         self.assertEqual(app.search('" OR *'), [])
 
+    def test_snippet_finds_match_beyond_start(self):
+        app.save_page('https://example.com/', 'Document', '前置き' * 300 + 'Python tutorial' + 'あとがき' * 300)
+        result = app.search('python')[0]
+        self.assertIn('Python', result['excerpt'])
+        self.assertTrue(result['excerpt'].startswith('…'))
+        self.assertLessEqual(len(result['excerpt']), 262)
+
+    def test_pagination_counts_and_bounds(self):
+        for i in range(23):
+            app.save_page(f'https://example.com/{i:02}', '検索 Search', '検索できる本文')
+        for query in ['検索', 'Search']:
+            first = app.search_page(query)
+            second = app.search_page(query, 2)
+            last = app.search_page(query, 999)
+            self.assertEqual((first['total'], first['pages']), (23, 3))
+            self.assertEqual(len(first['results']), 10)
+            self.assertTrue(set(r['url'] for r in first['results']).isdisjoint(r['url'] for r in second['results']))
+            self.assertEqual((last['page'], len(last['results'])), (3, 3))
+            self.assertEqual(app.search_page(query, -1)['page'], 1)
+        self.assertEqual(app.search_page('missing')['pages'], 0)
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')

@@ -96,20 +96,41 @@ def save_page(url, title, body):
         db.execute('INSERT INTO search VALUES (?, ?, ?)', (url, title, body))
 
 
-def search(query):
+def excerpt(body, tokens, size=260):
+    pattern = re.compile('|'.join(re.escape(t) for t in tokens), re.IGNORECASE)
+    found = pattern.search(body)
+    start = max(0, found.start() - 70) if found else 0
+    end = min(len(body), start + size)
+    return ('…' if start else '') + body[start:end] + ('…' if end < len(body) else '')
+
+
+def search_page(query, page=1, page_size=10):
     query = query.strip()[:200]
+    page = max(1, min(1000000, page))
     if not query:
-        return []
+        return {'results': [], 'total': 0, 'page': 1, 'pages': 0}
     tokens = query.split()
     with connect() as db:
         if all(len(t) >= 3 for t in tokens):
             match = ' AND '.join('"' + t.replace('"', '""') + '"' for t in tokens)
-            rows = db.execute('SELECT url,title,substr(body,1,400) AS excerpt FROM search WHERE search MATCH ? ORDER BY bm25(search,0,5,1) LIMIT 50', (match,)).fetchall()
+            source, where, params = 'search', 'search MATCH ?', (match,)
+            order = 'bm25(search,0,5,1), url'
         else:
             # FTS trigram cannot match one- or two-character Japanese queries.
-            clauses = ' AND '.join('(instr(lower(title),lower(?))>0 OR instr(lower(body),lower(?))>0)' for _ in tokens)
-            rows = db.execute(f'SELECT url,title,substr(body,1,400) AS excerpt FROM pages WHERE {clauses} LIMIT 50', tuple(t for t in tokens for _ in range(2))).fetchall()
-        return [dict(row) for row in rows]
+            source = 'pages'
+            where = ' AND '.join('(instr(lower(title),lower(?))>0 OR instr(lower(body),lower(?))>0)' for _ in tokens)
+            params = tuple(t for t in tokens for _ in range(2))
+            order = 'url'
+        total = db.execute(f'SELECT count(*) FROM {source} WHERE {where}', params).fetchone()[0]
+        pages = (total + page_size - 1) // page_size
+        page = min(page, max(1, pages))
+        rows = db.execute(f'SELECT url,title,body FROM {source} WHERE {where} ORDER BY {order} LIMIT ? OFFSET ?', (*params, page_size, (page - 1) * page_size)).fetchall()
+        results = [{'url': row['url'], 'title': row['title'], 'excerpt': excerpt(row['body'], tokens)} for row in rows]
+        return {'results': results, 'total': total, 'page': page, 'pages': pages}
+
+
+def search(query):
+    return search_page(query, page_size=50)['results']
 
 
 def crawl(seed, limit):
@@ -179,7 +200,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path)
         if path.path == '/api/search':
-            self.reply({'results': search(parse_qs(path.query).get('q', [''])[0])})
+            params = parse_qs(path.query)
+            try:
+                page = int(params.get('page', ['1'])[0])
+            except ValueError:
+                return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
+            self.reply(search_page(params.get('q', [''])[0], page))
         elif path.path == '/api/status':
             with connect() as db:
                 count = db.execute('SELECT count(*) FROM pages').fetchone()[0]
