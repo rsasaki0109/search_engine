@@ -28,6 +28,25 @@ class EvaluationTests(unittest.TestCase):
             finally:
                 app.DB = original
 
+    def test_scale_requires_five_target_hosts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            original = app.DB
+            try:
+                app.DB = Path(folder) / 'test.db'
+                app.init_db()
+                cases = [{'id': str(i), 'query': 'missing', 'expected_urls': [f'https://site{i}.test/0']} for i in range(5)]
+                with app.connect() as db:
+                    db.executemany('INSERT INTO pages VALUES (?,?,?,?)', [(f'https://site{i}.test/{j}', 'doc', '', '') for i in range(5) for j in range(100)])
+                report = evaluate.evaluate(cases)
+                self.assertTrue(report['corpus_pass'])
+                self.assertTrue(report['scale_speed_pass'])
+                self.assertFalse(report['quality_pass'])
+                with app.connect() as db:
+                    db.execute("UPDATE pages SET url=replace(url,'site4.test','unrelated.test') WHERE url LIKE 'https://site4.test/%'")
+                self.assertFalse(evaluate.evaluate(cases)['corpus_pass'])
+            finally:
+                app.DB = original
+
     def test_suite_has_twenty_tasks_across_five_sites(self):
         suite = json.loads(evaluate.CASES.read_text())
         self.assertEqual(len(suite['sites']), 5)

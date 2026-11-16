@@ -4,6 +4,7 @@ import json
 import statistics
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import app
 
@@ -26,7 +27,11 @@ def evaluate(cases):
     hits = sum(row['rank'] is not None for row in results)
     covered = sum(row['covered'] for row in results)
     worst = max((row['latency_ms'] for row in results), default=0)
-    return {'pages': len(urls), 'cases': len(results), 'covered': covered, 'hits_at_5': hits,
+    site_counts = app.list_sites()
+    expected_hosts = {urlsplit(url).hostname for case in cases for url in case['expected_urls']}
+    counts = {site['host']: site['count'] for site in site_counts}
+    corpus_pass = len(expected_hosts) == 5 and all(counts.get(host, 0) >= 100 for host in expected_hosts)
+    return {'sites': site_counts, 'corpus_pass': corpus_pass, 'pages': len(urls), 'cases': len(results), 'covered': covered, 'hits_at_5': hits,
             'hit_rate': hits / len(results) if results else 0,
             'max_median_latency_ms': worst,
             'quality_pass': len(results) == 20 and hits >= 16,

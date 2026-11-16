@@ -1,0 +1,250 @@
+{
+  "sites": [
+    {
+      "host": "developer.mozilla.org",
+      "count": 100
+    },
+    {
+      "host": "docs.python.org",
+      "count": 100
+    },
+    {
+      "host": "git-scm.com",
+      "count": 100
+    },
+    {
+      "host": "www.postgresql.org",
+      "count": 100
+    },
+    {
+      "host": "www.sqlite.org",
+      "count": 100
+    }
+  ],
+  "corpus_pass": true,
+  "pages": 500,
+  "cases": 20,
+  "covered": 19,
+  "hits_at_5": 18,
+  "hit_rate": 0.9,
+  "max_median_latency_ms": 26.128,
+  "quality_pass": true,
+  "scale_speed_pass": true,
+  "results": [
+    {
+      "id": "python-1",
+      "query": "json dumps",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 3.097
+    },
+    {
+      "id": "python-2",
+      "query": "pathlib",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 4.976
+    },
+    {
+      "id": "python-3",
+      "query": "sqlite3 connect",
+      "covered": true,
+      "rank": 2,
+      "latency_ms": 7.057
+    },
+    {
+      "id": "python-4",
+      "query": "argparse",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.002
+    },
+    {
+      "id": "sqlite-1",
+      "query": "FTS5 bm25",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.285
+    },
+    {
+      "id": "sqlite-2",
+      "query": "SELECT ORDER BY",
+      "covered": false,
+      "rank": null,
+      "latency_ms": 26.128
+    },
+    {
+      "id": "sqlite-3",
+      "query": "UPSERT",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.887
+    },
+    {
+      "id": "sqlite-4",
+      "query": "write ahead log",
+      "covered": true,
+      "rank": 2,
+      "latency_ms": 4.247
+    },
+    {
+      "id": "mdn-1",
+      "query": "fetch",
+      "covered": true,
+      "rank": 3,
+      "latency_ms": 8.075
+    },
+    {
+      "id": "mdn-2",
+      "query": "Promise",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 3.765
+    },
+    {
+      "id": "mdn-3",
+      "query": "URL",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.318
+    },
+    {
+      "id": "mdn-4",
+      "query": "CORS",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.604
+    },
+    {
+      "id": "postgresql-1",
+      "query": "full text search",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 8.607
+    },
+    {
+      "id": "postgresql-2",
+      "query": "indexes",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.785
+    },
+    {
+      "id": "postgresql-3",
+      "query": "EXPLAIN",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.596
+    },
+    {
+      "id": "postgresql-4",
+      "query": "transactions",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 7.91
+    },
+    {
+      "id": "git-1",
+      "query": "git rebase",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 6.697
+    },
+    {
+      "id": "git-2",
+      "query": "git stash",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 6.241
+    },
+    {
+      "id": "git-3",
+      "query": "git restore",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 8.073
+    },
+    {
+      "id": "git-4",
+      "query": "git log",
+      "covered": true,
+      "rank": null,
+      "latency_ms": 7.569
+    }
+  ],
+  "measured_at": "2026-11-16 00:24:36 UTC",
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1"
+  },
+  "measurement_note": "公式5ホスト各100ページ。固定20問・各3回の中央値、ローカル検索処理のみ。自然文検索や全ページの網羅性の評価ではない。",
+  "collection_outcomes": [
+    {
+      "site": "git",
+      "status": "done",
+      "count": 100
+    },
+    {
+      "site": "git",
+      "status": "pending",
+      "count": 2792
+    },
+    {
+      "site": "mdn",
+      "status": "done",
+      "count": 97
+    },
+    {
+      "site": "mdn",
+      "status": "pending",
+      "count": 2900
+    },
+    {
+      "site": "postgresql",
+      "status": "done",
+      "count": 98
+    },
+    {
+      "site": "postgresql",
+      "status": "failed",
+      "count": 1
+    },
+    {
+      "site": "postgresql",
+      "status": "pending",
+      "count": 1050
+    },
+    {
+      "site": "python",
+      "status": "done",
+      "count": 96
+    },
+    {
+      "site": "python",
+      "status": "pending",
+      "count": 603
+    },
+    {
+      "site": "sqlite",
+      "status": "done",
+      "count": 98
+    },
+    {
+      "site": "sqlite",
+      "status": "pending",
+      "count": 739
+    },
+    {
+      "site": "sqlite",
+      "status": "skipped",
+      "count": 1
+    }
+  ],
+  "collection_failures": [
+    {
+      "site": "postgresql",
+      "url": "https://www.postgresql.org/docs/current/monitoring.html",
+      "reason": "HTTP Error 503: Service Unavailable"
+    }
+  ]
+}
