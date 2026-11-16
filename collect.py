@@ -83,12 +83,15 @@ def collect_site(site, target=100, budget=500):
                     title = re.sub(r'\s+', ' ', ' '.join(page.title)).strip() or final
                     body = re.sub(r'\s+', ' ', ' '.join(page.text)).strip()
                     app.save_page(final, title, body)
+                    app.record_failure(url)
                     links = {linked for link in page.links if (linked := scoped_url(urljoin(final, link), seed, scope))}
                     with app.connect() as db:
                         remaining = max(0, 3000 - db.execute('SELECT count(*) FROM frontier WHERE site=?', (name,)).fetchone()[0])
                         db.executemany("INSERT OR IGNORE INTO frontier VALUES (?,?,'pending','')", [(name, link) for link in sorted(links)[:remaining]])
         except Exception as exc:
             status, reason = 'failed', str(exc)
+        if status == 'failed':
+            app.record_failure(url, reason)
         with app.connect() as db:
             db.execute('UPDATE frontier SET status=?,reason=? WHERE site=? AND url=?', (status, reason, name, url))
         count = site_count(seed)
@@ -110,8 +113,17 @@ def main():
     app.init_db()
     init_frontier()
     if args.retry_failed:
-        with app.connect() as db:
-            db.execute("UPDATE frontier SET status='pending',reason='' WHERE status='failed'")
+        failures = app.failed_pages()
+        origins = sorted({(urlsplit(row['url']).scheme, urlsplit(row['url']).netloc) for row in failures})
+        for origin in origins:
+            urls = [row['url'] for row in failures if (urlsplit(row['url']).scheme, urlsplit(row['url']).netloc) == origin][:args.budget]
+            app.cancel_event.clear()
+            app.crawl_lock.acquire()
+            app.crawl(urls[0], len(urls), urls)
+            print(f"{origin[0]}://{origin[1]}: {app.state['message']}", flush=True)
+        if not origins:
+            print('再取得する失敗ページはありません', flush=True)
+        return
     sites = json.loads(CASES.read_text())['sites']
     with ThreadPoolExecutor(max_workers=5) as pool:
         results = list(pool.map(lambda site: collect_site(site, args.target, args.budget), sites))

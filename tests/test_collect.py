@@ -43,6 +43,18 @@ class CollectionTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT status FROM frontier WHERE url LIKE '%blocked'").fetchone()[0], 'skipped')
             self.assertEqual(db.execute("SELECT count(*) FROM frontier WHERE url LIKE '%outside'").fetchone()[0], 0)
 
+    def test_cli_retries_failures_even_when_target_is_met(self):
+        app.save_page('https://example.com/docs', 'Existing', 'body')
+        with app.connect() as db:
+            db.execute("INSERT INTO frontier VALUES ('git','https://example.com/docs/retry','failed','HTTP 503')")
+        def fetch(url):
+            return ('', 'text/plain', url) if url.endswith('/robots.txt') else ('<title>Recovered</title>', 'text/html', url)
+        with patch('sys.argv', ['collect.py', '--target', '1', '--retry-failed']), patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=fetch), patch.object(app.cancel_event, 'wait', return_value=False):
+            collect.main()
+        self.assertEqual(app.failed_pages(), [])
+        self.assertEqual(app.list_pages()['total'], 2)
+        self.assertEqual(app.crawl_history()[0]['status'], 'completed')
+
     def test_failed_requests_are_saved_and_interrupted_requests_recover(self):
         def fetch(url):
             if url.endswith('/robots.txt'):

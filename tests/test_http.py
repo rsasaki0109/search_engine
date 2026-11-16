@@ -81,6 +81,36 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(data['total'], 1)
         self.assertEqual(data['results'][0]['url'], 'https://example.com/')
 
+    def test_batch_routes_use_saved_urls_and_failed_urls(self):
+        app.save_page('https://example.com/a', 'Old', 'body')
+        app.save_page('https://example.com/b', 'Old', 'body')
+        app.save_page('https://other.test/', 'Other', 'body')
+        self.assertEqual(self.post('/api/sites/refresh', {'host': 'missing.test'})[0], 400)
+        self.assertEqual(self.post('/api/sites/retry', {'host': 'example.com'})[0], 400)
+        calls = []
+        done = threading.Event()
+        def worker(*args):
+            calls.append(args)
+            app.state.update(running=False)
+            app.crawl_lock.release()
+            done.set()
+        with patch.object(app, 'crawl', side_effect=worker):
+            self.assertEqual(self.post('/api/sites/refresh', {'host': 'example.com'})[0], 202)
+            self.assertTrue(done.wait(5))
+            self.assertEqual(calls[-1], ('https://example.com/a', 2, ['https://example.com/a', 'https://example.com/b']))
+            app.record_failure('https://example.com/b', 'HTTP 503')
+            self.assertEqual(len(json.loads(self.request('GET', '/api/failures?host=example.com')[1])['results']), 1)
+            done.clear()
+            self.assertEqual(self.post('/api/sites/retry', {'host': 'example.com'})[0], 202)
+            self.assertTrue(done.wait(5))
+            self.assertEqual(calls[-1], ('https://example.com/b', 1, ['https://example.com/b']))
+
+    def test_batch_rejects_mixed_origins(self):
+        app.save_page('http://example.com/a', 'HTTP', 'body')
+        app.save_page('https://example.com/b', 'HTTPS', 'body')
+        self.assertEqual(self.post('/api/sites/refresh', {'host': 'example.com'})[0], 400)
+        self.assertFalse(app.state['running'])
+
     def test_delete_updates_search_library_and_count(self):
         url = 'https://example.com/'
         app.save_page(url, 'Python', 'Searchable body')
@@ -91,7 +121,7 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(self.post('/api/pages/delete', {'url': url})[0], 404)
 
     def test_mutations_reject_cross_origin_and_non_json(self):
-        for path in ['/api/crawl', '/api/crawl/cancel', '/api/pages/delete']:
+        for path in ['/api/crawl', '/api/crawl/cancel', '/api/pages/delete', '/api/sites/refresh', '/api/sites/retry']:
             with self.subTest(path=path):
                 self.assertEqual(self.post(path, {}, {'Origin': 'https://other.example'})[0], 403)
                 self.assertEqual(self.request('POST', path, '{}')[0], 415)

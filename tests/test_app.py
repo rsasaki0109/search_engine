@@ -148,6 +148,42 @@ class SearchTests(unittest.TestCase):
         app.delete_page('https://example.com/00')
         self.assertEqual(next(site['count'] for site in app.list_sites() if site['host'] == 'example.com'), 11)
 
+    def test_batch_refresh_preserves_failed_content_then_retries(self):
+        urls = ['https://example.com/a', 'https://example.com/b']
+        for url in urls:
+            app.save_page(url, 'Original', 'old body')
+        def fetch(url):
+            if url.endswith('/robots.txt'):
+                return '', 'text/plain', url
+            if url.endswith('/b'):
+                raise ValueError('一時的な取得失敗')
+            return '<title>New</title><a href="/unexpected">ignore</a>', 'text/html', url
+        app.crawl_lock.acquire()
+        with patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=fetch), patch.object(app.cancel_event, 'wait', return_value=False):
+            app.crawl(urls[0], 2, urls)
+        self.assertEqual(app.crawl_history()[0]['status'], 'partial')
+        self.assertEqual([row['url'] for row in app.failed_pages()], [urls[1]])
+        self.assertEqual(len(app.search('Original')), 1)
+        self.assertEqual(len(app.search('New')), 1)
+        self.assertEqual(app.list_pages()['total'], 2)
+        app.init_db()
+        self.assertEqual(len(app.failed_pages()), 1)
+        app.crawl_lock.acquire()
+        with patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'fetch', side_effect=lambda url: ('', 'text/plain', url) if url.endswith('/robots.txt') else ('<title>Recovered</title>', 'text/html', url)), patch.object(app.cancel_event, 'wait', return_value=False):
+            app.crawl(urls[1], 1, [urls[1]])
+        self.assertEqual(app.failed_pages(), [])
+        self.assertEqual(len(app.search('Recovered')), 1)
+
+    def test_success_clears_collector_failure(self):
+        import collect
+        collect.init_frontier()
+        with app.connect() as db:
+            db.execute("INSERT INTO frontier VALUES ('git','https://example.com/docs','failed','HTTP 503')")
+        self.assertEqual(len(app.failed_pages('example.com')), 1)
+        self.assertEqual(app.failed_pages('other.test'), [])
+        app.record_failure('https://example.com/docs')
+        self.assertEqual(app.failed_pages(), [])
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')

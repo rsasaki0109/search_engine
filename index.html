@@ -6,6 +6,7 @@ mark{background:#d7efac;color:inherit;border-radius:3px}#pagination{display:flex
 .page-row{padding:18px 0;border-bottom:1px solid #dce4de}.page-row a{display:block;color:#126f57;overflow-wrap:anywhere}.page-row small{display:block;margin:7px 0;overflow-wrap:anywhere}.actions{display:flex;gap:8px}.actions button{padding:8px 12px;font-size:13px}.danger{background:#9d4039}#libraryNav{display:flex;align-items:center;gap:12px;margin-top:18px}#libraryNav[hidden]{display:none}
 details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;overflow-wrap:anywhere}details li{font-size:13px;overflow-wrap:anywhere;margin:10px 0}details p{font-size:13px}
 .site-filter{display:flex;align-items:center;gap:12px;margin:-12px 0 20px;font-size:14px;color:#63756d}.site-filter select{max-width:75%;padding:10px}#siteStatus{font-size:13px}
+#failureList{font-size:13px;color:#63756d;overflow-wrap:anywhere}#failureList li{margin:10px 0}#maintenanceSite{max-width:100%}.actions{flex-wrap:wrap}
 </style>
 <header><div class="brand">little<span class="dot">●</span>search</div><small>あなたが育てる、小さな検索エンジン</small></header>
 <main><div class="eyebrow">YOUR CORNER OF THE WEB</div><h1>気になるWebを、探せる場所に。</h1><p>URLを登録して、自分だけの検索インデックスを作りましょう。</p>
@@ -13,6 +14,7 @@ details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;ov
 <label class="site-filter">検索対象 <select id="siteFilter" aria-label="検索対象のサイト"><option value="">すべてのサイト</option></select></label><p id="siteStatus" role="status"></p>
 <div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
 <section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p><button id="cancelCrawl" class="danger" hidden>クロールを停止</button></section>
+<section><h2>サイトを更新</h2><p class="hint">選択したサイトの保存済みページを更新します（最大500ページ）。失敗時も保存済みの本文を残します。</p><label>対象サイト <select id="maintenanceSite" aria-label="更新するサイト"></select></label><div class="actions" style="margin-top:16px"><button id="refreshSite">保存済みページを一括更新</button><button id="retrySite">失敗ページだけ再取得</button></div><p id="maintenanceStatus" role="status"></p><ul id="failureList"></ul></section>
 <section><h2>登録済みページ</h2><p class="hint">保存したページを確認・更新・削除できます。</p><form id="libraryForm"><input id="libraryQuery" placeholder="タイトル・URLで絞り込み" aria-label="登録済みページの絞り込み" maxlength="200"><button>絞り込む</button></form><p id="libraryStatus" role="status"></p><div id="library"></div><nav id="libraryNav" aria-label="登録済みページのページ送り" hidden><button id="libraryPrev">前へ</button><span id="libraryPage"></span><button id="libraryNext">次へ</button></nav></section>
 <section><h2>クロール履歴</h2><p class="hint">最近20回の実行結果。行を開くとページごとの結果を確認できます。</p><p id="historyStatus" role="status"></p><div id="history"></div></section>
 <footer>Little Search · ローカルで動く全文検索 · <span id="total">0</span>ページ登録済み</footer></main>
@@ -64,6 +66,37 @@ async function loadSites(){
 $('previous').addEventListener('click',()=>runSearch(currentPage-1));
 $('next').addEventListener('click',()=>runSearch(currentPage+1));
 $('crawlForm').addEventListener('submit',async e=>{e.preventDefault();$('crawlButton').disabled=true;try{await api('/api/crawl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:$('url').value,limit:Number($('limit').value)})});await refresh()}catch(error){$('status').textContent=error.message;$('crawlButton').disabled=false}});
+let maintenanceRequest=0, maintenanceRunning=false;
+async function loadMaintenance(){
+    const id=++maintenanceRequest;
+    try{
+        const [sites, failures]=await Promise.all([api('/api/sites'),api('/api/failures')]);
+        if(id!==maintenanceRequest)return;
+        const selected=$('maintenanceSite').value, hosts=new Set(sites.results.map(site=>site.host));
+        for(const failure of failures.results)hosts.add(new URL(failure.url).hostname);
+        const select=$('maintenanceSite');select.replaceChildren();
+        for(const host of [...hosts].sort())select.add(new Option(host,host));
+        if(hosts.has(selected))select.value=selected;
+        select.onchange=()=>showFailures(failures.results);
+        showFailures(failures.results);
+    }catch(error){$('maintenanceStatus').textContent=error.message}
+}
+function showFailures(failures){
+    const host=$('maintenanceSite').value, selected=failures.filter(row=>new URL(row.url).hostname===host);
+    $('maintenanceStatus').textContent=host?`${host} · 失敗 ${selected.length}ページ`:'更新するサイトはありません。';
+    $('failureList').replaceChildren();
+    for(const row of selected){const li=document.createElement('li');li.textContent=`${row.url} — ${row.reason}`;$('failureList').append(li)}
+    $('retrySite').disabled=maintenanceRunning||!selected.length;$('refreshSite').disabled=maintenanceRunning||!host;
+}
+for(const [id,path] of [['refreshSite','refresh'],['retrySite','retry']]){
+    $(id).addEventListener('click',async()=>{
+        $('refreshSite').disabled=true;$('retrySite').disabled=true;
+        try{
+            await api('/api/sites/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:$('maintenanceSite').value})});
+            wasRunning=true;await refresh();
+        }catch(error){$('maintenanceStatus').textContent=error.message;$(id).disabled=false}
+    });
+}
 let libraryPage=1, libraryQuery='', libraryRequest=0;
 async function loadLibrary(page=libraryPage){
     const id=++libraryRequest;
@@ -114,6 +147,6 @@ $('cancelCrawl').addEventListener('click',async()=>{
     try{await api('/api/crawl/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});await refresh()}
     catch(error){$('status').textContent=error.message;$('cancelCrawl').disabled=false}
 });
-async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;$('cancelCrawl').hidden=!data.running;$('cancelCrawl').disabled=data.cancelling;$('cancelCrawl').textContent=data.cancelling?'停止処理中…':'クロールを停止';if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();loadSites();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
-loadSites();loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
+async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;maintenanceRunning=data.running;if(data.running){$('refreshSite').disabled=true;$('retrySite').disabled=true}$('cancelCrawl').hidden=!data.running;$('cancelCrawl').disabled=data.cancelling;$('cancelCrawl').textContent=data.cancelling?'停止処理中…':'クロールを停止';if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();loadSites();loadMaintenance();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
+loadSites();loadMaintenance();loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
 </script></html>

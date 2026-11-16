@@ -1,0 +1,43 @@
+{
+  "measured_at": "2026-11-16 20:11:34 UTC",
+  "host": "docs.python.org",
+  "requested": 100,
+  "status": "completed",
+  "indexed": 100,
+  "message": "100ページを登録しました",
+  "remaining_failures": [],
+  "sites": [
+    {
+      "host": "developer.mozilla.org",
+      "count": 100
+    },
+    {
+      "host": "docs.python.org",
+      "count": 100
+    },
+    {
+      "host": "git-scm.com",
+      "count": 100
+    },
+    {
+      "host": "www.postgresql.org",
+      "count": 101
+    },
+    {
+      "host": "www.sqlite.org",
+      "count": 100
+    }
+  ],
+  "search_after_refresh": {
+    "corpus_pass": true,
+    "pages": 501,
+    "cases": 20,
+    "covered": 19,
+    "hits_at_5": 18,
+    "hit_rate": 0.9,
+    "max_median_latency_ms": 29.042,
+    "quality_pass": true,
+    "scale_speed_pass": true
+  },
+  "recovered_url": "https://www.postgresql.org/docs/current/monitoring.html"
+}

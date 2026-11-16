@@ -35,6 +35,7 @@ def init_db():
     with connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS pages (url TEXT PRIMARY KEY, title TEXT, body TEXT, updated TEXT)')
         db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(url UNINDEXED, title, body, tokenize='trigram')")
+        db.execute('CREATE TABLE IF NOT EXISTS failures (url TEXT PRIMARY KEY, reason TEXT, updated TEXT)')
         db.execute("CREATE TABLE IF NOT EXISTS crawls (id INTEGER PRIMARY KEY, seed TEXT, started TEXT, finished TEXT, status TEXT, indexed INTEGER, message TEXT, events TEXT)")
         db.execute("UPDATE crawls SET status='interrupted', finished=?, message='サーバー停止により中断しました' WHERE status='running'", (utc_now(),))
 
@@ -174,12 +175,35 @@ def search(query):
     return search_page(query, page_size=50)['results']
 
 
-def crawl(seed, limit):
+def failed_pages(host=''):
+    with connect() as db:
+        failures = {row['url']: dict(row) for row in db.execute('SELECT url,reason FROM failures')}
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='frontier'").fetchone():
+            for row in db.execute("SELECT url,reason FROM frontier WHERE status='failed'"):
+                failures.setdefault(row['url'], dict(row))
+    return [row for url, row in sorted(failures.items()) if not host or urlsplit(url).hostname == host]
+
+
+def record_failure(url, reason=None):
+    with connect() as db:
+        if reason is None:
+            db.execute('DELETE FROM failures WHERE url=?', (url,))
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='frontier'").fetchone():
+                db.execute("UPDATE frontier SET status='done',reason='' WHERE url=? AND status='failed'", (url,))
+        else:
+            db.execute('INSERT OR REPLACE INTO failures VALUES (?,?,?)', (url, reason, utc_now()))
+
+
+def crawl(seed, limit, urls=None):
     indexed, errors, events = 0, [], []
     run_id = None
     message, outcome = 'クロールを開始できませんでした', 'failed'
     def record(url, status, reason):
         events.append({'url': url, 'status': status, 'reason': reason})
+        if status == 'failed':
+            record_failure(url, reason)
+        elif status == 'success':
+            record_failure(url)
         with connect() as db:
             db.execute('UPDATE crawls SET indexed=?, events=? WHERE id=?', (indexed, json.dumps(events, ensure_ascii=False), run_id))
         with state_lock:
@@ -202,12 +226,18 @@ def crawl(seed, limit):
             if exc.code not in (404, 410):
                 raise ValueError('robots.txtを確認できませんでした') from exc
             robots.parse([])
-        queue, seen = [seed], set()
+        queue, seen = list(dict.fromkeys(urls)) if urls is not None else [seed], set()
+        delay = max(1, robots.crawl_delay(AGENT) or 0)
+        if cancel_event.wait(delay):
+            raise ValueError('停止要求を受け付けました')
         while queue and len(seen) < limit and not cancel_event.is_set():
             url = queue.pop(0)
             if url in seen:
                 continue
             seen.add(url)
+            if urlsplit(url).netloc != origin:
+                record(url, 'failed', '別サイトのURLは一括処理できません')
+                continue
             with state_lock:
                 state.update(current_url=url)
             if not robots.can_fetch(AGENT, url):
@@ -220,7 +250,7 @@ def crawl(seed, limit):
                     raise ValueError('別サイトへのリダイレクトは対象外です')
                 if mime not in ('text/html', 'application/xhtml+xml'):
                     record(url, 'skipped', 'HTML以外のコンテンツ: ' + mime)
-                    cancel_event.wait(1)
+                    cancel_event.wait(delay)
                     continue
                 page = Page()
                 page.feed(raw)
@@ -229,7 +259,7 @@ def crawl(seed, limit):
                 save_page(final, title, body)
                 indexed += 1
                 record(url, 'success', '登録しました')
-                for link in page.links:
+                for link in (page.links if urls is None else []):
                     parts = urlsplit(urljoin(final, link))
                     linked = urlunsplit((parts.scheme, parts.netloc, parts.path or '/', parts.query, ''))
                     if parts.scheme in ('http', 'https') and parts.netloc == origin and linked not in seen and linked not in queue and len(queue) < 200:
@@ -239,13 +269,16 @@ def crawl(seed, limit):
             except Exception as exc:
                 errors.append(f'{url}: {exc}')
                 record(url, 'failed', str(exc))
-            cancel_event.wait(1)
+            cancel_event.wait(delay)
         outcome = 'completed' if not errors else 'partial'
         message = f'{indexed}ページを登録しました'
         if errors:
             message += f'（スキップ・エラー {len(errors)}件: {errors[0]}）'
     except Exception as exc:
         message = str(exc)
+        if not cancel_event.is_set():
+            for failed in (urls if urls is not None else [seed]):
+                record_failure(failed, message)
     finally:
         try:
             with state_lock:
@@ -290,6 +323,8 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(list_pages(params.get('q', [''])[0], page))
         elif path.path == '/api/sites':
             self.reply({'results': list_sites()})
+        elif path.path == '/api/failures':
+            self.reply({'results': failed_pages(parse_qs(path.query).get('host', [''])[0])})
         elif path.path == '/api/crawls':
             self.reply({'results': crawl_history()})
         elif path.path == '/api/status':
@@ -309,7 +344,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'error': 'Not found'}, 404)
 
     def do_POST(self):
-        if self.path not in ('/api/crawl', '/api/pages/delete', '/api/crawl/cancel'):
+        if self.path not in ('/api/crawl', '/api/pages/delete', '/api/crawl/cancel', '/api/sites/refresh', '/api/sites/retry'):
             return self.reply({'error': 'Not found'}, 404)
         # Disallow requests from other websites to this local service.
         if self.headers.get('Origin') and self.headers['Origin'] != 'http://' + self.headers.get('Host', ''):
@@ -323,15 +358,35 @@ class Handler(BaseHTTPRequestHandler):
                 cancel_event.set()
                 state.update(cancelling=True, message='停止要求を受け付けました。処理中の取得が終了するまでお待ちください')
             return self.reply({'ok': True}, 202)
+        urls = None
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if not 0 < length <= 4096:
                 raise ValueError('入力が大きすぎるか空です')
             data = json.loads(self.rfile.read(length))
-            seed = str(data.get('url', '')).strip()
-            if len(seed) > 2048 or urlsplit(seed).scheme not in ('http', 'https'):
-                raise ValueError('http / https のURLを入力してください')
-            limit = max(1, min(30, int(data.get('limit', 10))))
+            if self.path in ('/api/sites/refresh', '/api/sites/retry'):
+                host = str(data.get('host', '')).strip().lower().rstrip('.')
+                if not host:
+                    raise ValueError('サイトを選択してください')
+                if self.path == '/api/sites/refresh':
+                    with connect() as db:
+                        urls = [row['url'] for row in db.execute('SELECT url FROM pages WHERE url_host(url)=? ORDER BY url', (host,))]
+                else:
+                    urls = [row['url'] for row in failed_pages(host)]
+                if not urls:
+                    raise ValueError('対象ページがありません')
+                if len(urls) > 500:
+                    raise ValueError('一括処理は500ページまでです')
+                # Keep a single origin for robots.txt and politeness rules.
+                origin = (urlsplit(urls[0]).scheme, urlsplit(urls[0]).netloc)
+                if any((urlsplit(url).scheme, urlsplit(url).netloc) != origin for url in urls):
+                    raise ValueError('同じ接続先のページを選択してください')
+                seed, limit = urls[0], len(urls)
+            else:
+                seed = str(data.get('url', '')).strip()
+                if len(seed) > 2048 or urlsplit(seed).scheme not in ('http', 'https'):
+                    raise ValueError('http / https のURLを入力してください')
+                limit = max(1, min(30, int(data.get('limit', 10))))
         except (ValueError, TypeError, AttributeError) as exc:
             return self.reply({'error': str(exc)}, 400)
         if self.path == '/api/pages/delete':
@@ -347,7 +402,7 @@ class Handler(BaseHTTPRequestHandler):
         with state_lock:
             cancel_event.clear()
             state.update(cancelling=False, running=True, message='robots.txtを確認中…', indexed=0, processed=0, current_url=seed, limit=limit)
-        threading.Thread(target=crawl, args=(seed, limit), daemon=True).start()
+        threading.Thread(target=crawl, args=(seed, limit) if urls is None else (seed, limit, urls), daemon=True).start()
         self.reply({'ok': True}, 202)
 
 
