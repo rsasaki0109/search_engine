@@ -17,16 +17,29 @@ from urllib.robotparser import RobotFileParser
 
 DB = Path(__file__).with_name('search.db')
 AGENT = 'LittleSearch/1.0'
-MAX_BYTES = 2_000_000
+MAX_BYTES = 4_000_000
 crawl_lock = threading.Lock()
 cancel_event = threading.Event()
 state = {'running': False, 'message': 'URLを登録して検索を始めましょう', 'indexed': 0, 'current_url': '', 'processed': 0, 'limit': 0, 'cancelling': False}
 state_lock = threading.Lock()
 
 
+def title_match(title, query):
+    """Prefer whole query words in a title; punctuation separates words."""
+    title_words = re.findall(r'\w+', title.casefold())
+    query_words = re.findall(r'\w+', query.casefold())
+    if not query_words:
+        return 0
+    size = len(query_words)
+    if any(title_words[i:i + size] == query_words for i in range(len(title_words) - size + 1)):
+        return 2
+    return sum(word in title_words for word in set(query_words)) / len(set(query_words))
+
+
 def connect():
     db = sqlite3.connect(DB, timeout=10)
     db.create_function('url_host', 1, lambda url: (urlsplit(url).hostname or '').lower().rstrip('.'), deterministic=True)
+    db.create_function('title_match', 2, title_match, deterministic=True)
     db.row_factory = sqlite3.Row
     return db
 
@@ -72,7 +85,7 @@ def fetch(url):
     with build_opener(Redirects()).open(Request(url, headers={'User-Agent': AGENT}), timeout=12) as response:
         content = response.read(MAX_BYTES + 1)
         if len(content) > MAX_BYTES:
-            raise ValueError('ページが大きすぎます（上限2MB）')
+            raise ValueError('ページが大きすぎます（上限4MB）')
         return content.decode(response.headers.get_content_charset() or 'utf-8', errors='replace'), response.headers.get_content_type(), response.url
 
 
@@ -166,7 +179,7 @@ def search_page(query, page=1, page_size=10, site=''):
         total = db.execute(f'SELECT count(*) FROM {source} WHERE {where}', params).fetchone()[0]
         pages = (total + page_size - 1) // page_size
         page = min(page, max(1, pages))
-        rows = db.execute(f'SELECT url,title,body FROM {source} WHERE {where} ORDER BY {order} LIMIT ? OFFSET ?', (*params, page_size, (page - 1) * page_size)).fetchall()
+        rows = db.execute(f'SELECT url,title,body FROM {source} WHERE {where} ORDER BY title_match(title, ?) DESC, {order} LIMIT ? OFFSET ?', (*params, query, page_size, (page - 1) * page_size)).fetchall()
         results = [{'url': row['url'], 'title': row['title'], 'excerpt': excerpt(row['body'], tokens)} for row in rows]
         return {'results': results, 'total': total, 'page': page, 'pages': pages}
 

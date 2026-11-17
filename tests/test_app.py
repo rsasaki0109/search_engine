@@ -184,6 +184,44 @@ class SearchTests(unittest.TestCase):
         app.record_failure('https://example.com/docs')
         self.assertEqual(app.failed_pages(), [])
 
+    def test_title_words_beat_frequent_body_matches(self):
+        app.save_page('https://example.com/tutorial', 'Tutorial', 'git log ' * 100)
+        app.save_page('https://example.com/logging', 'Git logging guide', 'git log example')
+        app.save_page('https://example.com/log', 'Git - git-log Documentation', 'git log ' + 'details ' * 1000)
+        rows = app.search('git log')
+        self.assertEqual(rows[0]['url'], 'https://example.com/log')
+        self.assertEqual(app.title_match('Git logging', 'git log'), 0.5)
+        self.assertEqual(app.title_match('logging', 'log'), 0)
+        self.assertEqual(app.title_match('Log commands for Git', 'git log'), 1)
+        self.assertEqual(app.title_match('Git - git-log', 'GIT LOG'), 2)
+
+    def test_short_japanese_title_match_is_ranked_first(self):
+        app.save_page('https://example.com/a', 'Guide', '京都 観光 ' * 100)
+        app.save_page('https://example.com/z', '京都 観光', '京都 観光 information')
+        self.assertEqual(app.search('京都 観光')[0]['url'], 'https://example.com/z')
+
+    def test_partial_title_match_ranks_short_token_query(self):
+        app.save_page('https://example.com/a', 'Unrelated manual', 'select order by ' * 100)
+        app.save_page('https://example.com/z', 'SELECT', 'SELECT statements support ORDER BY')
+        self.assertEqual(app.search('SELECT ORDER BY')[0]['url'], 'https://example.com/z')
+
+    def test_fetch_enforces_limit_at_boundary(self):
+        import io
+        from email.message import Message
+        headers = Message()
+        headers['Content-Type'] = 'text/html; charset=utf-8'
+        def response(body):
+            stream = io.BytesIO(body)
+            stream.headers = headers
+            stream.url = 'https://example.com/'
+            return stream
+        with patch.object(app, 'MAX_BYTES', 32), patch.object(app, 'public_url', side_effect=lambda url: url), patch.object(app, 'build_opener') as opener:
+            opener.return_value.open.return_value = response(b'x' * 32)
+            self.assertEqual(len(app.fetch('https://example.com/')[0]), 32)
+            opener.return_value.open.return_value = response(b'x' * 33)
+            with self.assertRaisesRegex(ValueError, '大きすぎます'):
+                app.fetch('https://example.com/')
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')

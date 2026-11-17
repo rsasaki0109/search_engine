@@ -1,0 +1,185 @@
+{
+  "sites": [
+    {
+      "host": "developer.mozilla.org",
+      "count": 100
+    },
+    {
+      "host": "docs.python.org",
+      "count": 100
+    },
+    {
+      "host": "git-scm.com",
+      "count": 100
+    },
+    {
+      "host": "www.postgresql.org",
+      "count": 101
+    },
+    {
+      "host": "www.sqlite.org",
+      "count": 101
+    }
+  ],
+  "corpus_pass": true,
+  "pages": 502,
+  "cases": 20,
+  "covered": 20,
+  "hits_at_5": 20,
+  "hit_rate": 1.0,
+  "max_median_latency_ms": 58.239,
+  "quality_pass": true,
+  "scale_speed_pass": true,
+  "results": [
+    {
+      "id": "python-1",
+      "query": "json dumps",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 4.962
+    },
+    {
+      "id": "python-2",
+      "query": "pathlib",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 4.157
+    },
+    {
+      "id": "python-3",
+      "query": "sqlite3 connect",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 9.138
+    },
+    {
+      "id": "python-4",
+      "query": "argparse",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 4.33
+    },
+    {
+      "id": "sqlite-1",
+      "query": "FTS5 bm25",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 1.488
+    },
+    {
+      "id": "sqlite-2",
+      "query": "SELECT ORDER BY",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 58.239
+    },
+    {
+      "id": "sqlite-3",
+      "query": "UPSERT",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.621
+    },
+    {
+      "id": "sqlite-4",
+      "query": "write ahead log",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.051
+    },
+    {
+      "id": "mdn-1",
+      "query": "fetch",
+      "covered": true,
+      "rank": 3,
+      "latency_ms": 9.393
+    },
+    {
+      "id": "mdn-2",
+      "query": "Promise",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 4.024
+    },
+    {
+      "id": "mdn-3",
+      "query": "URL",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.996
+    },
+    {
+      "id": "mdn-4",
+      "query": "CORS",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 2.35
+    },
+    {
+      "id": "postgresql-1",
+      "query": "full text search",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 10.464
+    },
+    {
+      "id": "postgresql-2",
+      "query": "indexes",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.935
+    },
+    {
+      "id": "postgresql-3",
+      "query": "EXPLAIN",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 5.229
+    },
+    {
+      "id": "postgresql-4",
+      "query": "transactions",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 7.536
+    },
+    {
+      "id": "git-1",
+      "query": "git rebase",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 7.112
+    },
+    {
+      "id": "git-2",
+      "query": "git stash",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 6.777
+    },
+    {
+      "id": "git-3",
+      "query": "git restore",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 6.933
+    },
+    {
+      "id": "git-4",
+      "query": "git log",
+      "covered": true,
+      "rank": 1,
+      "latency_ms": 4.533
+    }
+  ],
+  "measured_at": "2026-11-17 03:12:06 UTC",
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1"
+  },
+  "measurement_note": "既存の固定20問・期待URLを変更せず、502ページで測定。SQLite SELECTを追加取得。各問3回の中央値、API通信と描画は含まない。評価セットを見て改善した結果で、未知の検索語への性能は未測定。",
+  "changes": [
+    "取得上限を2MBから4MBへ拡大。実ページは2033807バイト。",
+    "タイトルの語順・単語一致率を優先し、同点は既存のBM25またはURL順。2文字以下を含む検索にも適用。"
+  ]
+}
