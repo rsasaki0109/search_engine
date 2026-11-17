@@ -4,3 +4,4 @@ search.db
 search.db-*
 .venv/
 evaluation/local-report.json
+backups/
