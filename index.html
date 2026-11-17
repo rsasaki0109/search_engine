@@ -12,7 +12,7 @@ details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;ov
 <main><div class="eyebrow">YOUR CORNER OF THE WEB</div><h1>気になるWebを、探せる場所に。</h1><p>URLを登録して、自分だけの検索インデックスを作りましょう。</p>
 <form id="searchForm"><input id="query" aria-label="検索キーワード" placeholder="登録したページを検索" maxlength="200" required><button>検索</button></form>
 <label class="site-filter">検索対象 <select id="siteFilter" aria-label="検索対象のサイト"><option value="">すべてのサイト</option></select></label><p id="siteStatus" role="status"></p>
-<div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
+<div id="summary" role="status">まずは下からWebサイトを登録してください。</div><div class="actions" style="margin:12px 0"><button id="copySearch" disabled>検索URLをコピー</button><span id="shareStatus" role="status"></span></div><div id="results"></div><nav id="pagination" aria-label="検索結果のページ送り" hidden><button id="previous">前へ</button><span id="pageLabel"></span><button id="next">次へ</button></nav>
 <section><h2>Webサイトを登録</h2><p class="hint">同じサイト内のリンクをたどり、ページの本文を保存します。</p><form id="crawlForm"><input id="url" type="url" placeholder="https://example.com" aria-label="登録するURL" required><select id="limit" aria-label="最大ページ数"><option value="1">1ページ</option><option value="10" selected>最大10ページ</option><option value="30">最大30ページ</option></select><button id="crawlButton">登録する</button></form><p id="status" role="status"></p><button id="cancelCrawl" class="danger" hidden>クロールを停止</button></section>
 <section><h2>サイトを更新</h2><p class="hint">選択したサイトの保存済みページを更新します（最大500ページ）。失敗時も保存済みの本文を残します。</p><label>対象サイト <select id="maintenanceSite" aria-label="更新するサイト"></select></label><div class="actions" style="margin-top:16px"><button id="refreshSite">保存済みページを一括更新</button><button id="retrySite">失敗ページだけ再取得</button></div><p id="maintenanceStatus" role="status"></p><ul id="failureList"></ul></section>
 <section><h2>登録済みページ</h2><p class="hint">保存したページを確認・更新・削除できます。</p><form id="libraryForm"><input id="libraryQuery" placeholder="タイトル・URLで絞り込み" aria-label="登録済みページの絞り込み" maxlength="200"><button>絞り込む</button></form><p id="libraryStatus" role="status"></p><div id="library"></div><nav id="libraryNav" aria-label="登録済みページのページ送り" hidden><button id="libraryPrev">前へ</button><span id="libraryPage"></span><button id="libraryNext">次へ</button></nav></section>
@@ -22,6 +22,41 @@ details{padding:14px 0;border-bottom:1px solid #dce4de}summary{cursor:pointer;ov
 const $=id=>document.getElementById(id);let wasRunning=false;
 async function api(path,options){const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.error||'通信に失敗しました');return data}
 let activeQuery='', activeSite='', currentPage=1, requestId=0;
+function writeSearchURL(page,mode='replace'){
+    const url=new URL(location.href);
+    for(const key of ['q','site','page'])url.searchParams.delete(key);
+    if(activeQuery)url.searchParams.set('q',activeQuery);
+    if(activeSite)url.searchParams.set('site',activeSite);
+    if(activeQuery&&page>1)url.searchParams.set('page',String(page));
+    if(url.href!==location.href)history[mode==='push'?'pushState':'replaceState'](null,'',url);
+    document.title=activeQuery?`${activeQuery} · Little Search`:'Little Search';
+    $('copySearch').disabled=!activeQuery;
+}
+function syncSiteSelection(){
+    const select=$('siteFilter');
+    if(activeSite&&![...select.options].some(option=>option.value===activeSite))select.add(new Option(`${activeSite} (0)`,activeSite));
+    select.value=activeSite;
+}
+function restoreSearchURL(){
+    ++requestId;
+    const params=new URL(location.href).searchParams;
+    activeQuery=(params.get('q')||'').trim().slice(0,200);
+    activeSite=(params.get('site')||'').trim().toLowerCase().replace(/\.$/,'').slice(0,253);
+    const raw=params.get('page')||'1';
+    currentPage=/^\d+$/.test(raw)?Math.max(1,Math.min(1000000,Number(raw))):1;
+    $('query').value=activeQuery;syncSiteSelection();
+    $('shareStatus').textContent='';
+    if(activeQuery)runSearch(currentPage);
+    else{
+        currentPage=1;writeSearchURL(1);$('results').replaceChildren();$('pagination').hidden=true;
+        $('summary').textContent='キーワードを入力して検索してください。';
+    }
+}
+window.addEventListener('popstate',restoreSearchURL);
+$('copySearch').addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(location.href);$('shareStatus').textContent='検索URLをコピーしました';}
+    catch(error){$('shareStatus').textContent='アドレスバーからURLをコピーしてください。';}
+});
 function highlighted(node,text,query){
     const tokens=query.trim().split(/\s+/).filter(Boolean).sort((a,b)=>b.length-a.length);
     if(!tokens.length){node.textContent=text;return}
@@ -34,13 +69,14 @@ function highlighted(node,text,query){
     }
     node.append(document.createTextNode(text.slice(start)));
 }
-async function runSearch(page=1){
+async function runSearch(page=1,historyMode='replace'){
     const id=++requestId, query=activeQuery;
+    currentPage=page;writeSearchURL(page,historyMode);$('shareStatus').textContent='';
     $('summary').textContent='検索中…';$('pagination').hidden=true;
     try{
         const data=await api('/api/search?q='+encodeURIComponent(query)+'&page='+page+'&site='+encodeURIComponent(activeSite));
         if(id!==requestId)return;
-        currentPage=data.page;$('results').replaceChildren();
+        currentPage=data.page;writeSearchURL(data.page);$('results').replaceChildren();
         $('summary').textContent=data.total?`${data.total}件の結果 · ${(data.page-1)*10+1}–${(data.page-1)*10+data.results.length}件を表示`:'見つかりませんでした。別のキーワードで検索するか、ページを登録してください。';
         for(const item of data.results){
             const article=document.createElement('article'),a=document.createElement('a'),url=document.createElement('small'),p=document.createElement('p');
@@ -50,8 +86,8 @@ async function runSearch(page=1){
         $('pagination').hidden=data.pages<=1;$('previous').disabled=data.page<=1;$('next').disabled=data.page>=data.pages;$('pageLabel').textContent=`${data.page} / ${data.pages}`;
     }catch(error){if(id===requestId){$('results').replaceChildren();$('summary').textContent=error.message}}
 }
-$('searchForm').addEventListener('submit',e=>{e.preventDefault();activeQuery=$('query').value.trim();runSearch()});
-$('siteFilter').addEventListener('change',()=>{activeSite=$('siteFilter').value;if(activeQuery)runSearch()});
+$('searchForm').addEventListener('submit',e=>{e.preventDefault();activeQuery=$('query').value.trim().slice(0,200);runSearch(1,'push')});
+$('siteFilter').addEventListener('change',()=>{activeSite=$('siteFilter').value;if(activeQuery)runSearch(1,'push');else writeSearchURL(1,'push')});
 let sitesRequest=0;
 async function loadSites(){
     const id=++sitesRequest;
@@ -63,8 +99,8 @@ async function loadSites(){
         select.value=activeSite;$('siteStatus').textContent='';
     }catch(error){if(id===sitesRequest)$('siteStatus').textContent='サイト一覧を取得できません: '+error.message}
 }
-$('previous').addEventListener('click',()=>runSearch(currentPage-1));
-$('next').addEventListener('click',()=>runSearch(currentPage+1));
+$('previous').addEventListener('click',()=>runSearch(currentPage-1,'push'));
+$('next').addEventListener('click',()=>runSearch(currentPage+1,'push'));
 $('crawlForm').addEventListener('submit',async e=>{e.preventDefault();$('crawlButton').disabled=true;try{await api('/api/crawl',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:$('url').value,limit:Number($('limit').value)})});await refresh()}catch(error){$('status').textContent=error.message;$('crawlButton').disabled=false}});
 let maintenanceRequest=0, maintenanceRunning=false;
 async function loadMaintenance(){
@@ -148,5 +184,5 @@ $('cancelCrawl').addEventListener('click',async()=>{
     catch(error){$('status').textContent=error.message;$('cancelCrawl').disabled=false}
 });
 async function refresh(){try{const data=await api('/api/status');$('total').textContent=data.total;$('status').textContent=data.message+(data.running?` · ${data.processed}/${data.limit}ページ処理 · ${data.current_url}`:'');$('crawlButton').disabled=data.running;maintenanceRunning=data.running;if(data.running){$('refreshSite').disabled=true;$('retrySite').disabled=true}$('cancelCrawl').hidden=!data.running;$('cancelCrawl').disabled=data.cancelling;$('cancelCrawl').textContent=data.cancelling?'停止処理中…':'クロールを停止';if(data.running||wasRunning)loadHistory();if(wasRunning&&!data.running){loadLibrary();loadSites();loadMaintenance();if(activeQuery)runSearch(currentPage)}wasRunning=data.running}catch(error){$('status').textContent='サーバーに接続できません';$('crawlButton').disabled=false}}
-loadSites();loadMaintenance();loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
+restoreSearchURL();loadSites();loadMaintenance();loadLibrary();loadHistory();refresh();setInterval(refresh,1500);
 </script></html>

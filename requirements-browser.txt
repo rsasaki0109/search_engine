@@ -1,0 +1,2 @@
+# Optional browser tests only; the application needs no third-party packages.
+playwright==1.62.0
