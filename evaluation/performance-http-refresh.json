@@ -1,0 +1,398 @@
+{
+  "date": "2026-11-18",
+  "baseline_commit": "6a6b3a4",
+  "scope": "8 concurrent loopback HTTP clients and one paced writer, identical-content refreshes of existing pages",
+  "identical_response_bytes_for_all_queries": true,
+  "runs": {
+    "delete_before": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 10000,
+      "synthetic_pages": 9498,
+      "corpus_sha256": "8c8adada98d2c56570da7e64b75680b83c490564ba39bdd0b667d88618b33dda",
+      "journal_mode": "delete",
+      "refresh_target_per_second": 20,
+      "refreshes": 30,
+      "refresh_p95_ms": 122.231,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 346.2,
+      "p50_ms": 20.74,
+      "p95_ms": 45.217,
+      "p99_ms": 57.563,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 36.568,
+          "response_sha256": "5b99f85c8c429a78dd396bc55550e33b879bd90e84a35b5a1918b66f9d6ee6ff"
+        },
+        "pathlib": {
+          "p95_ms": 30.515,
+          "response_sha256": "43c6bc3aa17b6751c96b31139d960d5d6524311d67ba2a6572ffea605f0ae65c"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 60.654,
+          "response_sha256": "392a847e3b1daf0dbf2995a17a63cec25969f0290a91f505cf30b69b2a9cec08"
+        },
+        "argparse": {
+          "p95_ms": 32.755,
+          "response_sha256": "8751e8ae45790c57074be8cebf48c6d23352dac47e74f9d4adbe641687418424"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 24.761,
+          "response_sha256": "3ef266067f945bb35034675984e83564778a6058fcb9429ac0212c5a12e332b8"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 43.652,
+          "response_sha256": "81492dce5df1ca4f6ec6b8e5e221aefa2397e910e39f4e95c07ccbf3e732edc8"
+        },
+        "UPSERT": {
+          "p95_ms": 35.92,
+          "response_sha256": "bad654583184a9bf7a08397140f71745fe9b2ba77580e754af308877665ac36c"
+        },
+        "write ahead log": {
+          "p95_ms": 46.764,
+          "response_sha256": "aa3d8848dd0f7fc8a7d8ab7c0021865f682755c2afc0b935a23220d8ddb6397c"
+        },
+        "fetch": {
+          "p95_ms": 37.865,
+          "response_sha256": "7f293d0632a4a995820fa519ff73a9203182ec54f2a06187024b383a0be1718f"
+        },
+        "Promise": {
+          "p95_ms": 43.497,
+          "response_sha256": "2ca31990798998faa260caa65356b4255bdde0294a05f51c3fb1fdee75ef3df6"
+        },
+        "URL": {
+          "p95_ms": 32.441,
+          "response_sha256": "82522a29c3e0f0a7954d640e45f5419fefc6dfe1f1246c6fe43d5c3268132c72"
+        },
+        "CORS": {
+          "p95_ms": 34.632,
+          "response_sha256": "afe752c33e5bcd927603a42b951d869a594b0d91bd55bd4a24ee1c2b32ce3784"
+        },
+        "full text search": {
+          "p95_ms": 33.301,
+          "response_sha256": "0a0370981b99d72f4ccff4d11dcc4ae60c72e619f447c9c2ef706bd0253ea9fc"
+        },
+        "indexes": {
+          "p95_ms": 51.213,
+          "response_sha256": "f8aaf30ecc83ffee2b8d32ad3e8e28cbefe946a4523a1fc3ad5f55177e6a71fb"
+        },
+        "EXPLAIN": {
+          "p95_ms": 46.972,
+          "response_sha256": "1eea16fa6702b0abaa1ce5aef49584373db3ab413ff2242704d6a86f810aa5b4"
+        },
+        "transactions": {
+          "p95_ms": 53.764,
+          "response_sha256": "0655ad3a682015904af6c2f2905b8ded47259c8c29c3081ba56bcfa1525f8ca8"
+        },
+        "git rebase": {
+          "p95_ms": 34.938,
+          "response_sha256": "551ea7992b74d155a67645abdce62586f0768c94edc7028a37d1af2cc7364327"
+        },
+        "git stash": {
+          "p95_ms": 34.498,
+          "response_sha256": "f913d6317bba812bffe4a27f5655a37e9d30819afe3cc95b8763e24d956c7e50"
+        },
+        "git restore": {
+          "p95_ms": 57.283,
+          "response_sha256": "5b27bfbcf6836aefb067543b7ad6a8ac06d39e59ab49724ec453e50e49729258"
+        },
+        "git log": {
+          "p95_ms": 36.055,
+          "response_sha256": "82f9babb534e280f77b6d8749f5645b79b1c4e02979090b3554519f920897106"
+        },
+        "Python 3": {
+          "p95_ms": 45.502,
+          "response_sha256": "1c3478a353aa3e3b6b3044f9fcaafb7d14d79621b419d78edf2fe935417956bb"
+        },
+        "git a": {
+          "p95_ms": 46.988,
+          "response_sha256": "c5df6ee3c810b3ae9e030bb483b6a1d161183ab8ef121667b0482e79ae32c0c7"
+        },
+        "SQLite 日本": {
+          "p95_ms": 36.203,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 23.773,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 34.945,
+          "response_sha256": "528c636f0f24a675fdf6fbbbc123537867db41aa1221600969ad5b03b409ee90"
+        },
+        "by": {
+          "p95_ms": 45.07,
+          "response_sha256": "f6169ca5e0e0b70553a73f0b34dc41b83a33ff9f0662a74437d00e05465509eb"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 29.569,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    },
+    "wal_before": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 10000,
+      "synthetic_pages": 9498,
+      "corpus_sha256": "8c8adada98d2c56570da7e64b75680b83c490564ba39bdd0b667d88618b33dda",
+      "journal_mode": "wal",
+      "refresh_target_per_second": 20,
+      "refreshes": 30,
+      "refresh_p95_ms": 122.927,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 375.9,
+      "p50_ms": 19.621,
+      "p95_ms": 37.898,
+      "p99_ms": 50.48,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 22.0,
+          "response_sha256": "5b99f85c8c429a78dd396bc55550e33b879bd90e84a35b5a1918b66f9d6ee6ff"
+        },
+        "pathlib": {
+          "p95_ms": 26.169,
+          "response_sha256": "43c6bc3aa17b6751c96b31139d960d5d6524311d67ba2a6572ffea605f0ae65c"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 63.717,
+          "response_sha256": "392a847e3b1daf0dbf2995a17a63cec25969f0290a91f505cf30b69b2a9cec08"
+        },
+        "argparse": {
+          "p95_ms": 27.787,
+          "response_sha256": "8751e8ae45790c57074be8cebf48c6d23352dac47e74f9d4adbe641687418424"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 20.002,
+          "response_sha256": "3ef266067f945bb35034675984e83564778a6058fcb9429ac0212c5a12e332b8"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 39.599,
+          "response_sha256": "81492dce5df1ca4f6ec6b8e5e221aefa2397e910e39f4e95c07ccbf3e732edc8"
+        },
+        "UPSERT": {
+          "p95_ms": 21.492,
+          "response_sha256": "bad654583184a9bf7a08397140f71745fe9b2ba77580e754af308877665ac36c"
+        },
+        "write ahead log": {
+          "p95_ms": 33.825,
+          "response_sha256": "aa3d8848dd0f7fc8a7d8ab7c0021865f682755c2afc0b935a23220d8ddb6397c"
+        },
+        "fetch": {
+          "p95_ms": 28.516,
+          "response_sha256": "7f293d0632a4a995820fa519ff73a9203182ec54f2a06187024b383a0be1718f"
+        },
+        "Promise": {
+          "p95_ms": 33.517,
+          "response_sha256": "2ca31990798998faa260caa65356b4255bdde0294a05f51c3fb1fdee75ef3df6"
+        },
+        "URL": {
+          "p95_ms": 25.412,
+          "response_sha256": "82522a29c3e0f0a7954d640e45f5419fefc6dfe1f1246c6fe43d5c3268132c72"
+        },
+        "CORS": {
+          "p95_ms": 22.774,
+          "response_sha256": "afe752c33e5bcd927603a42b951d869a594b0d91bd55bd4a24ee1c2b32ce3784"
+        },
+        "full text search": {
+          "p95_ms": 33.004,
+          "response_sha256": "0a0370981b99d72f4ccff4d11dcc4ae60c72e619f447c9c2ef706bd0253ea9fc"
+        },
+        "indexes": {
+          "p95_ms": 33.689,
+          "response_sha256": "f8aaf30ecc83ffee2b8d32ad3e8e28cbefe946a4523a1fc3ad5f55177e6a71fb"
+        },
+        "EXPLAIN": {
+          "p95_ms": 30.565,
+          "response_sha256": "1eea16fa6702b0abaa1ce5aef49584373db3ab413ff2242704d6a86f810aa5b4"
+        },
+        "transactions": {
+          "p95_ms": 51.099,
+          "response_sha256": "0655ad3a682015904af6c2f2905b8ded47259c8c29c3081ba56bcfa1525f8ca8"
+        },
+        "git rebase": {
+          "p95_ms": 30.652,
+          "response_sha256": "551ea7992b74d155a67645abdce62586f0768c94edc7028a37d1af2cc7364327"
+        },
+        "git stash": {
+          "p95_ms": 31.727,
+          "response_sha256": "f913d6317bba812bffe4a27f5655a37e9d30819afe3cc95b8763e24d956c7e50"
+        },
+        "git restore": {
+          "p95_ms": 46.993,
+          "response_sha256": "5b27bfbcf6836aefb067543b7ad6a8ac06d39e59ab49724ec453e50e49729258"
+        },
+        "git log": {
+          "p95_ms": 32.444,
+          "response_sha256": "82f9babb534e280f77b6d8749f5645b79b1c4e02979090b3554519f920897106"
+        },
+        "Python 3": {
+          "p95_ms": 40.449,
+          "response_sha256": "1c3478a353aa3e3b6b3044f9fcaafb7d14d79621b419d78edf2fe935417956bb"
+        },
+        "git a": {
+          "p95_ms": 40.58,
+          "response_sha256": "c5df6ee3c810b3ae9e030bb483b6a1d161183ab8ef121667b0482e79ae32c0c7"
+        },
+        "SQLite 日本": {
+          "p95_ms": 25.505,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 16.057,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 30.903,
+          "response_sha256": "528c636f0f24a675fdf6fbbbc123537867db41aa1221600969ad5b03b409ee90"
+        },
+        "by": {
+          "p95_ms": 29.754,
+          "response_sha256": "f6169ca5e0e0b70553a73f0b34dc41b83a33ff9f0662a74437d00e05465509eb"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 21.232,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    },
+    "wal_after": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 10000,
+      "synthetic_pages": 9498,
+      "corpus_sha256": "8c8adada98d2c56570da7e64b75680b83c490564ba39bdd0b667d88618b33dda",
+      "journal_mode": "wal",
+      "refresh_target_per_second": 20,
+      "refreshes": 54,
+      "refresh_p95_ms": 32.4,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 399.4,
+      "p50_ms": 19.195,
+      "p95_ms": 31.678,
+      "p99_ms": 39.263,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 23.148,
+          "response_sha256": "5b99f85c8c429a78dd396bc55550e33b879bd90e84a35b5a1918b66f9d6ee6ff"
+        },
+        "pathlib": {
+          "p95_ms": 23.117,
+          "response_sha256": "43c6bc3aa17b6751c96b31139d960d5d6524311d67ba2a6572ffea605f0ae65c"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 42.594,
+          "response_sha256": "392a847e3b1daf0dbf2995a17a63cec25969f0290a91f505cf30b69b2a9cec08"
+        },
+        "argparse": {
+          "p95_ms": 24.286,
+          "response_sha256": "8751e8ae45790c57074be8cebf48c6d23352dac47e74f9d4adbe641687418424"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 23.205,
+          "response_sha256": "3ef266067f945bb35034675984e83564778a6058fcb9429ac0212c5a12e332b8"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 31.355,
+          "response_sha256": "81492dce5df1ca4f6ec6b8e5e221aefa2397e910e39f4e95c07ccbf3e732edc8"
+        },
+        "UPSERT": {
+          "p95_ms": 22.882,
+          "response_sha256": "bad654583184a9bf7a08397140f71745fe9b2ba77580e754af308877665ac36c"
+        },
+        "write ahead log": {
+          "p95_ms": 30.591,
+          "response_sha256": "aa3d8848dd0f7fc8a7d8ab7c0021865f682755c2afc0b935a23220d8ddb6397c"
+        },
+        "fetch": {
+          "p95_ms": 28.433,
+          "response_sha256": "7f293d0632a4a995820fa519ff73a9203182ec54f2a06187024b383a0be1718f"
+        },
+        "Promise": {
+          "p95_ms": 29.047,
+          "response_sha256": "2ca31990798998faa260caa65356b4255bdde0294a05f51c3fb1fdee75ef3df6"
+        },
+        "URL": {
+          "p95_ms": 25.154,
+          "response_sha256": "82522a29c3e0f0a7954d640e45f5419fefc6dfe1f1246c6fe43d5c3268132c72"
+        },
+        "CORS": {
+          "p95_ms": 25.701,
+          "response_sha256": "afe752c33e5bcd927603a42b951d869a594b0d91bd55bd4a24ee1c2b32ce3784"
+        },
+        "full text search": {
+          "p95_ms": 28.485,
+          "response_sha256": "0a0370981b99d72f4ccff4d11dcc4ae60c72e619f447c9c2ef706bd0253ea9fc"
+        },
+        "indexes": {
+          "p95_ms": 31.801,
+          "response_sha256": "f8aaf30ecc83ffee2b8d32ad3e8e28cbefe946a4523a1fc3ad5f55177e6a71fb"
+        },
+        "EXPLAIN": {
+          "p95_ms": 28.111,
+          "response_sha256": "1eea16fa6702b0abaa1ce5aef49584373db3ab413ff2242704d6a86f810aa5b4"
+        },
+        "transactions": {
+          "p95_ms": 41.26,
+          "response_sha256": "0655ad3a682015904af6c2f2905b8ded47259c8c29c3081ba56bcfa1525f8ca8"
+        },
+        "git rebase": {
+          "p95_ms": 26.336,
+          "response_sha256": "551ea7992b74d155a67645abdce62586f0768c94edc7028a37d1af2cc7364327"
+        },
+        "git stash": {
+          "p95_ms": 27.866,
+          "response_sha256": "f913d6317bba812bffe4a27f5655a37e9d30819afe3cc95b8763e24d956c7e50"
+        },
+        "git restore": {
+          "p95_ms": 34.596,
+          "response_sha256": "5b27bfbcf6836aefb067543b7ad6a8ac06d39e59ab49724ec453e50e49729258"
+        },
+        "git log": {
+          "p95_ms": 28.666,
+          "response_sha256": "82f9babb534e280f77b6d8749f5645b79b1c4e02979090b3554519f920897106"
+        },
+        "Python 3": {
+          "p95_ms": 34.696,
+          "response_sha256": "1c3478a353aa3e3b6b3044f9fcaafb7d14d79621b419d78edf2fe935417956bb"
+        },
+        "git a": {
+          "p95_ms": 31.518,
+          "response_sha256": "c5df6ee3c810b3ae9e030bb483b6a1d161183ab8ef121667b0482e79ae32c0c7"
+        },
+        "SQLite 日本": {
+          "p95_ms": 26.776,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 17.718,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 23.613,
+          "response_sha256": "528c636f0f24a675fdf6fbbbc123537867db41aa1221600969ad5b03b409ee90"
+        },
+        "by": {
+          "p95_ms": 29.148,
+          "response_sha256": "f6169ca5e0e0b70553a73f0b34dc41b83a33ff9f0662a74437d00e05465509eb"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 17.56,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@ from pathlib import Path
 import platform
 import random
 import sqlite3
+import tempfile
 import threading
 import time
 from urllib.parse import urlencode
@@ -22,10 +23,14 @@ class QuietHandler(app.Handler):
         pass
 
 
-def build_corpus(source, destination, target):
+def copy_index(source, destination):
     with closing(sqlite3.connect(source.as_uri() + '?mode=ro', uri=True)) as original:
         with closing(sqlite3.connect(destination)) as copy:
             original.backup(copy)
+
+
+def build_corpus(source, destination, target):
+    copy_index(source, destination)
     app.DB = destination
     app.init_db()
     with closing(app.connect()) as db, db:
@@ -51,7 +56,7 @@ def build_corpus(source, destination, target):
         db.execute("INSERT INTO short_search(short_search) VALUES('optimize')")
 
 
-def measure(db_path, workers, rounds):
+def measure(db_path, workers, rounds, refresh_hz=0):
     app.DB = db_path
     cases = json.loads(CASES.read_text())['cases']
     queries = list(dict.fromkeys([case['query'] for case in cases] + EXTRA_QUERIES))
@@ -61,6 +66,20 @@ def measure(db_path, workers, rounds):
         digest = hashlib.sha256()
         for row in db.execute('SELECT url,title,body FROM pages ORDER BY url'):
             digest.update((json.dumps(tuple(row), ensure_ascii=False) + '\n').encode())
+        journal_mode = db.execute('PRAGMA journal_mode').fetchone()[0]
+        refresh_pages = db.execute('SELECT url,title,body FROM pages ORDER BY url LIMIT 64').fetchall() if refresh_hz else []
+    refresh_times = []
+    stop_refreshing = threading.Event()
+
+    def refresh():
+        index = 0
+        while not stop_refreshing.is_set():
+            started = time.perf_counter()
+            app.save_page(*refresh_pages[index % len(refresh_pages)])
+            refresh_times.append((time.perf_counter() - started) * 1000)
+            index += 1
+            stop_refreshing.wait(max(0, 1 / refresh_hz - (time.perf_counter() - started)))
+
     with app.ThreadingHTTPServer(('127.0.0.1', 0), QuietHandler) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -80,10 +99,16 @@ def measure(db_path, workers, rounds):
             signatures = {query: request(query)[1] for query in queries}
             workload = queries * rounds
             random.Random(42).shuffle(workload)
-            started = time.perf_counter()
-            with ThreadPoolExecutor(max_workers=workers) as pool:
-                samples = list(pool.map(request, workload))
-            seconds = time.perf_counter() - started
+            with ThreadPoolExecutor(max_workers=workers) as readers, ThreadPoolExecutor(max_workers=1) as writer:
+                started = time.perf_counter()
+                pending_refresh = writer.submit(refresh) if refresh_hz else None
+                try:
+                    samples = list(readers.map(request, workload))
+                    seconds = time.perf_counter() - started
+                finally:
+                    stop_refreshing.set()
+                if pending_refresh:
+                    pending_refresh.result()
         finally:
             server.shutdown()
             thread.join()
@@ -95,6 +120,9 @@ def measure(db_path, workers, rounds):
     values = [elapsed for elapsed, _ in samples]
     return {'environment': {'python': platform.python_version(), 'sqlite': sqlite3.sqlite_version},
             'pages': pages, 'synthetic_pages': synthetic, 'corpus_sha256': digest.hexdigest(),
+            'journal_mode': journal_mode, 'refresh_target_per_second': refresh_hz,
+            'refreshes': len(refresh_times),
+            'refresh_p95_ms': round(percentile(refresh_times, 95), 3) if refresh_times else None,
             'workers': workers, 'rounds': rounds, 'requests': len(values),
             'requests_per_second': round(len(values) / seconds, 1),
             **{f'p{p}_ms': round(percentile(values, p), 3) for p in (50, 95, 99)},
@@ -109,6 +137,8 @@ def main():
     parser.add_argument('--pages', type=int, default=10_000)
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--rounds', type=int, default=16)
+    parser.add_argument('--refresh-hz', type=int, default=0, help='Maximum same-content page refreshes per second, on a disposable copy')
+    parser.add_argument('--journal', choices=('delete', 'wal'), default='wal', help='Journal mode of the disposable refresh workload')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if not args.db.is_file() or min(args.pages, args.workers, args.rounds) < 1:
@@ -117,7 +147,20 @@ def main():
         with args.build.open('xb'):
             pass
         build_corpus(args.db.resolve(), args.build, args.pages)
-    report = measure(args.build or args.db, args.workers, args.rounds)
+    if args.refresh_hz < 0:
+        parser.error('--refresh-hz must be non-negative')
+    source = (args.build or args.db).resolve()
+    if args.refresh_hz:
+        with tempfile.TemporaryDirectory(prefix='little-search-load-') as directory:
+            copy = Path(directory) / 'index.db'
+            copy_index(source, copy)
+            app.DB = copy
+            app.init_db()
+            with closing(sqlite3.connect(copy)) as db:
+                db.execute('PRAGMA journal_mode=' + args.journal)
+            report = measure(copy, args.workers, args.rounds, args.refresh_hz)
+    else:
+        report = measure(source, args.workers, args.rounds)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print({k: v for k, v in report.items() if k != 'queries'})
 

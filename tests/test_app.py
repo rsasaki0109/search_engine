@@ -1,3 +1,4 @@
+from contextlib import closing
 import tempfile
 import unittest
 from pathlib import Path
@@ -242,6 +243,19 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(len(app.search('É')), 1)
         self.assertEqual(len(app.search('é')), 1)
         self.assertEqual(app.search('"*'), [])
+
+    def test_search_snapshot_survives_concurrent_refresh(self):
+        url = 'https://example.com/ref'
+        app.save_page(url, 'Original', '京都の資料')
+        with closing(app.connect()) as reader, reader:
+            self.assertEqual(reader.execute('PRAGMA journal_mode').fetchone()[0], 'wal')
+            reader.execute('BEGIN')
+            self.assertEqual(reader.execute('SELECT title FROM search_titles').fetchone()[0], 'Original')
+            app.save_page(url, 'Updated', '東京の資料')
+            self.assertEqual(reader.execute('SELECT title FROM search_titles').fetchone()[0], 'Original')
+            self.assertEqual(reader.execute('SELECT body FROM search').fetchone()[0], '京都の資料')
+            self.assertEqual(app.search('京都'), [])
+            self.assertEqual(app.search('東京')[0]['title'], 'Updated')
 
     def test_title_projection_migration_preserves_rank_and_site_filter(self):
         app.save_page('https://example.com/ref', 'Git-log', 'git log 日')

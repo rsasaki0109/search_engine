@@ -90,7 +90,8 @@ def connect():
 
 
 def init_db():
-    with connect() as db:
+    with closing(connect()) as db, db:
+        db.execute('PRAGMA journal_mode=WAL')
         db.execute('BEGIN IMMEDIATE')
         db.execute('CREATE TABLE IF NOT EXISTS pages (url TEXT PRIMARY KEY, title TEXT, body TEXT, updated TEXT)')
         db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(url UNINDEXED, title, body, tokenize='trigram')")
@@ -110,6 +111,7 @@ def init_db():
             db.executemany('INSERT INTO search_titles VALUES (?,?,?,?,?)',
                            ((row['rowid'], row['url'], row['title'], normalized_title(row['title']), row['host']) for row in rows))
             db.execute("INSERT OR REPLACE INTO search_meta VALUES ('title_index_version','1')")
+        db.execute('CREATE INDEX IF NOT EXISTS search_titles_url ON search_titles(url)')
         db.execute('CREATE TABLE IF NOT EXISTS failures (url TEXT PRIMARY KEY, reason TEXT, updated TEXT)')
         db.execute("CREATE TABLE IF NOT EXISTS crawls (id INTEGER PRIMARY KEY, seed TEXT, started TEXT, finished TEXT, status TEXT, indexed INTEGER, message TEXT, events TEXT)")
         db.execute("UPDATE crawls SET status='interrupted', finished=?, message='サーバー停止により中断しました' WHERE status='running'", (utc_now(),))
@@ -179,21 +181,29 @@ class Page(HTMLParser):
                 self.title.append(data)
 
 
+def remove_indexed_url(db, url, has_titles, has_short):
+    ids_sql = 'SELECT id FROM search_titles WHERE url=?' if has_titles else 'SELECT rowid FROM search WHERE url=?'
+    rowids = [row[0] for row in db.execute(ids_sql, (url,))]
+    if has_short:
+        db.executemany('DELETE FROM short_search WHERE rowid=?', ((rowid,) for rowid in rowids))
+    db.executemany('DELETE FROM search WHERE rowid=?', ((rowid,) for rowid in rowids))
+    if has_titles:
+        db.execute('DELETE FROM search_titles WHERE url=?', (url,))
+
+
 def save_page(url, title, body):
-    with connect() as db:
-        db.execute('INSERT OR REPLACE INTO pages VALUES (?, ?, ?, ?)', (url, title, body, time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())))
-        if short_index_ready(db):
-            db.execute('DELETE FROM short_search WHERE rowid IN (SELECT rowid FROM search WHERE url=?)', (url,))
+    terms = short_terms(title, body)
+    with closing(connect()) as db, db:
+        db.execute('INSERT OR REPLACE INTO pages VALUES (?, ?, ?, ?)', (url, title, body, utc_now()))
         has_titles = title_index_ready(db)
-        if has_titles:
-            db.execute('DELETE FROM search_titles WHERE id IN (SELECT rowid FROM search WHERE url=?)', (url,))
-        db.execute('DELETE FROM search WHERE url = ?', (url,))
+        has_short = short_index_ready(db)
+        remove_indexed_url(db, url, has_titles, has_short)
         rowid = db.execute('INSERT INTO search VALUES (?, ?, ?)', (url, title, body)).lastrowid
         if has_titles:
             db.execute('INSERT INTO search_titles VALUES (?,?,?,?,?)',
                        (rowid, url, title, normalized_title(title), (urlsplit(url).hostname or '').lower().rstrip('.')))
-        if short_index_ready(db):
-            db.execute('INSERT INTO short_search(rowid,url,terms) VALUES (?,?,?)', (rowid, url, short_terms(title, body)))
+        if has_short:
+            db.execute('INSERT INTO short_search(rowid,url,terms) VALUES (?,?,?)', (rowid, url, terms))
 
 
 def list_pages(query='', page=1):
@@ -209,14 +219,9 @@ def list_pages(query='', page=1):
 
 
 def delete_page(url):
-    with connect() as db:
+    with closing(connect()) as db, db:
         deleted = db.execute('DELETE FROM pages WHERE url = ?', (url,)).rowcount
-        if short_index_ready(db):
-            db.execute('DELETE FROM short_search WHERE rowid IN (SELECT rowid FROM search WHERE url=?)', (url,))
-        has_titles = title_index_ready(db)
-        if has_titles:
-            db.execute('DELETE FROM search_titles WHERE id IN (SELECT rowid FROM search WHERE url=?)', (url,))
-        db.execute('DELETE FROM search WHERE url = ?', (url,))
+        remove_indexed_url(db, url, title_index_ready(db), short_index_ready(db))
     return bool(deleted)
 
 
