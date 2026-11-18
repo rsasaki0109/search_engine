@@ -1,0 +1,30 @@
+{
+  "before_ref": "969da92",
+  "corpus_sha256": "c34679cf56aa7b2bfce6802a636cd4dec0d5058f61077f703d1af2997f30d134",
+  "same_corpus": true,
+  "same_totals_and_top_10": true,
+  "result_cache": false,
+  "pages": 502,
+  "queries": 27,
+  "requests_per_engine": 405,
+  "p50_ms": {
+    "before": 3.584,
+    "after": 3.111
+  },
+  "p95_ms": {
+    "before": 40.255,
+    "after": 6.822
+  },
+  "p99_ms": {
+    "before": 47.182,
+    "after": 10.174
+  },
+  "p95_speedup": 5.9,
+  "hits_at_5": 20,
+  "index_migration_seconds": 4.818,
+  "db_bytes": {
+    "before_derived_index": 52404224,
+    "after_derived_index": 64528384
+  },
+  "scope": "warm sequential local search, fresh SQLite connection per request; excludes HTTP and rendering"
+}

@@ -25,10 +25,14 @@ def validate(db):
             raise ValueError(f'{table}の形式が対応していません')
     # This command checks the FTS index in the temporary snapshot, never the source.
     db.execute("INSERT INTO search(search) VALUES('integrity-check')")
+    if 'short_search' in tables:
+        db.execute("INSERT INTO short_search(short_search) VALUES('integrity-check')")
     counts = {table: db.execute(f'SELECT count(*) FROM {table}').fetchone()[0]
               for table in ['pages', 'search', 'crawls', 'failures', 'frontier'] if table in tables}
     if counts['pages'] != counts['search']:
         raise ValueError('ページ数と検索索引の件数が一致しません')
+    if 'short_search' in tables and db.execute('SELECT count(*) FROM short_search').fetchone()[0] != counts['search']:
+        raise ValueError('短い語用の索引と検索索引の件数が一致しません')
     return counts
 
 

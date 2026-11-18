@@ -1,0 +1,453 @@
+{
+  "measured_at": "2026-11-18 00:40:25 UTC",
+  "environment": {
+    "python": "3.12.14",
+    "sqlite": "3.53.1"
+  },
+  "corpus_sha256": "c34679cf56aa7b2bfce6802a636cd4dec0d5058f61077f703d1af2997f30d134",
+  "db_sha256": "5168c01e63e1462a9c2a516bb3e8da8d0f23310a9b8745c4ba0c9d12bfc12aef",
+  "db_bytes": 64528384,
+  "pages": 502,
+  "rounds": 15,
+  "queries": 27,
+  "requests": 405,
+  "p50_ms": 3.584,
+  "p95_ms": 40.255,
+  "p99_ms": 47.182,
+  "max_ms": 57.429,
+  "hits_at_5": 20,
+  "scope": "warm sequential local search, fresh SQLite connection per request; excludes HTTP and rendering",
+  "results": [
+    {
+      "query": "json dumps",
+      "p50_ms": 2.114,
+      "p95_ms": 7.723,
+      "total": 4,
+      "top_urls": [
+        "https://docs.python.org/ja/3/library/json.html",
+        "https://docs.python.org/ja/3/reference/simple_stmts.html",
+        "https://docs.python.org/ja/3/whatsnew/3.15.html",
+        "https://www.sqlite.org/cli.html"
+      ]
+    },
+    {
+      "query": "pathlib",
+      "p50_ms": 2.382,
+      "p95_ms": 6.325,
+      "total": 7,
+      "top_urls": [
+        "https://docs.python.org/ja/3/library/pathlib.html",
+        "https://docs.python.org/ja/3/contents.html",
+        "https://docs.python.org/ja/3/whatsnew/3.15.html",
+        "https://docs.python.org/ja/3/py-modindex.html",
+        "https://docs.python.org/ja/3/reference/simple_stmts.html",
+        "https://docs.python.org/ja/3/library/index.html",
+        "https://docs.python.org/ja/3/library/argparse.html"
+      ]
+    },
+    {
+      "query": "sqlite3 connect",
+      "p50_ms": 4.713,
+      "p95_ms": 7.876,
+      "total": 51,
+      "top_urls": [
+        "https://docs.python.org/ja/3/library/sqlite3.html",
+        "https://www.sqlite.org/cintro.html",
+        "https://www.sqlite.org/c3ref/backup_finish.html",
+        "https://www.sqlite.org/backup.html",
+        "https://www.sqlite.org/34to35.html",
+        "https://www.sqlite.org/loadext.html",
+        "https://www.sqlite.org/inmemorydb.html",
+        "https://www.sqlite.org/sharedcache.html",
+        "https://www.sqlite.org/rescode.html",
+        "https://www.sqlite.org/custombuild.html"
+      ]
+    },
+    {
+      "query": "argparse",
+      "p50_ms": 2.099,
+      "p95_ms": 3.299,
+      "total": 8,
+      "top_urls": [
+        "https://docs.python.org/ja/3/library/argparse.html",
+        "https://docs.python.org/ja/3/contents.html",
+        "https://docs.python.org/ja/3/howto/index.html",
+        "https://docs.python.org/ja/3/whatsnew/index.html",
+        "https://docs.python.org/ja/3/whatsnew/3.15.html",
+        "https://docs.python.org/ja/3/deprecations/index.html",
+        "https://docs.python.org/ja/3/library/index.html",
+        "https://docs.python.org/ja/3/py-modindex.html"
+      ]
+    },
+    {
+      "query": "FTS5 bm25",
+      "p50_ms": 1.014,
+      "p95_ms": 6.133,
+      "total": 2,
+      "top_urls": [
+        "https://www.sqlite.org/fts5.html",
+        "https://www.sqlite.org/keyword_index.html"
+      ]
+    },
+    {
+      "query": "SELECT ORDER BY",
+      "p50_ms": 46.102,
+      "p95_ms": 57.429,
+      "total": 154,
+      "top_urls": [
+        "https://www.sqlite.org/lang_select.html",
+        "https://www.sqlite.org/pragma.html",
+        "https://www.sqlite.org/tempfiles.html",
+        "https://developer.mozilla.org/ja/docs/Web/API",
+        "https://developer.mozilla.org/ja/docs/Web/API/AnalyserNode",
+        "https://developer.mozilla.org/ja/docs/Web/API/Document_Object_Model",
+        "https://developer.mozilla.org/ja/docs/Web/API/HTML_DOM_API",
+        "https://developer.mozilla.org/ja/docs/Web/API/URL",
+        "https://developer.mozilla.org/ja/docs/Web/API/Web_Animations_API/Using_the_Web_Animations_API",
+        "https://developer.mozilla.org/ja/docs/Web/API/Web_Workers_API/Using_web_workers"
+      ]
+    },
+    {
+      "query": "UPSERT",
+      "p50_ms": 3.683,
+      "p95_ms": 6.895,
+      "total": 10,
+      "top_urls": [
+        "https://www.sqlite.org/lang_upsert.html",
+        "https://www.sqlite.org/debugging.html",
+        "https://www.sqlite.org/lang.html",
+        "https://www.sqlite.org/news.html",
+        "https://www.sqlite.org/doclist.html",
+        "https://www.sqlite.org/keyword_index.html",
+        "https://www.sqlite.org/sitemap.html",
+        "https://www.sqlite.org/changes.html",
+        "https://www.sqlite.org/pragma.html",
+        "https://www.postgresql.org/docs/current/bookindex.html"
+      ]
+    },
+    {
+      "query": "write ahead log",
+      "p50_ms": 3.288,
+      "p95_ms": 5.184,
+      "total": 47,
+      "top_urls": [
+        "https://www.sqlite.org/wal.html",
+        "https://www.sqlite.org/errlog.html",
+        "https://www.sqlite.org/shortnames.html",
+        "https://www.sqlite.org/isolation.html",
+        "https://www.postgresql.org/docs/current/admin.html",
+        "https://www.postgresql.org/docs/current/reference-server.html",
+        "https://git-scm.com/docs/git-for-each-ref",
+        "https://www.postgresql.org/docs/current/reference.html",
+        "https://www.postgresql.org/docs/current/",
+        "https://www.postgresql.org/docs/current/index.html"
+      ]
+    },
+    {
+      "query": "fetch",
+      "p50_ms": 4.307,
+      "p95_ms": 8.265,
+      "total": 223,
+      "top_urls": [
+        "https://git-scm.com/docs/git-fetch",
+        "https://developer.mozilla.org/ja/docs/Web/API/Fetch_API",
+        "https://developer.mozilla.org/ja/docs/Web/API/Fetch_API/Using_Fetch",
+        "https://git-scm.com/docs/git-pull",
+        "https://git-scm.com/docs/git-remote",
+        "https://git-scm.com/docs/git-svn",
+        "https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/CORS",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbortSignal",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbortController",
+        "https://developer.mozilla.org/ja/docs/Web/API/Service_Worker_API"
+      ]
+    },
+    {
+      "query": "Promise",
+      "p50_ms": 2.47,
+      "p95_ms": 2.675,
+      "total": 35,
+      "top_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbortSignal",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbsoluteOrientationSensor",
+        "https://developer.mozilla.org/ja/docs/Web/API/HTML_DOM_API",
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects",
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference",
+        "https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/CORS",
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide",
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions",
+        "https://developer.mozilla.org/ja/docs/Web/JavaScript"
+      ]
+    },
+    {
+      "query": "URL",
+      "p50_ms": 2.771,
+      "p95_ms": 7.979,
+      "total": 109,
+      "top_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/API/URL",
+        "https://git-scm.com/docs/git-remote",
+        "https://developer.mozilla.org/ja/docs/Web/XML/Guides/OpenSearch",
+        "https://developer.mozilla.org/ja/docs/Web/API/History_API/Working_with_the_History_API",
+        "https://developer.mozilla.org/ja/docs/Web/API/Fetch_API/Using_Fetch",
+        "https://git-scm.com/docs/git-svn",
+        "https://git-scm.com/docs/git-pull",
+        "https://git-scm.com/docs/git-fetch",
+        "https://git-scm.com/docs/git-submodule",
+        "https://git-scm.com/docs/git-clone"
+      ]
+    },
+    {
+      "query": "CORS",
+      "p50_ms": 1.151,
+      "p95_ms": 1.455,
+      "total": 6,
+      "top_urls": [
+        "https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/CORS",
+        "https://developer.mozilla.org/ja/docs/Web/HTTP",
+        "https://developer.mozilla.org/ja/docs/Web/API/Fetch_API/Using_Fetch",
+        "https://developer.mozilla.org/ja/docs/Web/Security",
+        "https://developer.mozilla.org/ja/docs/Web/HTML",
+        "https://developer.mozilla.org/ja/docs/Web/API/Fetch_API"
+      ]
+    },
+    {
+      "query": "full text search",
+      "p50_ms": 4.532,
+      "p95_ms": 9.704,
+      "total": 99,
+      "top_urls": [
+        "https://www.postgresql.org/docs/current/textsearch.html",
+        "https://www.sqlite.org/fts3.html",
+        "https://www.sqlite.org/fts5.html",
+        "https://git-scm.com/docs/git-grep",
+        "https://www.sqlite.org/rowvalue.html",
+        "https://www.sqlite.org/docs.html",
+        "https://www.postgresql.org/docs/current/sql.html",
+        "https://www.sqlite.org/debugging.html",
+        "https://www.postgresql.org/docs/current/appendixes.html",
+        "https://www.sqlite.org/optoverview.html"
+      ]
+    },
+    {
+      "query": "indexes",
+      "p50_ms": 2.984,
+      "p95_ms": 6.395,
+      "total": 55,
+      "top_urls": [
+        "https://www.postgresql.org/docs/current/indexes.html",
+        "https://www.sqlite.org/partialindex.html",
+        "https://www.sqlite.org/expridx.html",
+        "https://www.postgresql.org/docs/current/sql.html",
+        "https://www.postgresql.org/docs/current/indextypes.html",
+        "https://www.postgresql.org/docs/current/indexam.html",
+        "https://www.sqlite.org/optoverview.html",
+        "https://www.postgresql.org/docs/current/internals.html",
+        "https://www.sqlite.org/queryplanner-ng.html",
+        "https://www.sqlite.org/sitemap.html"
+      ]
+    },
+    {
+      "query": "EXPLAIN",
+      "p50_ms": 2.769,
+      "p95_ms": 5.577,
+      "total": 76,
+      "top_urls": [
+        "https://www.postgresql.org/docs/current/sql-explain.html",
+        "https://www.postgresql.org/docs/current/performance-tips.html",
+        "https://www.sqlite.org/docs.html",
+        "https://www.sqlite.org/debugging.html",
+        "https://www.postgresql.org/docs/current/appendixes.html",
+        "https://www.postgresql.org/docs/current/contrib.html",
+        "https://www.sqlite.org/lang.html",
+        "https://www.postgresql.org/docs/current/monitoring.html",
+        "https://www.sqlite.org/howtocompile.html",
+        "https://www.postgresql.org/docs/current/bookindex.html"
+      ]
+    },
+    {
+      "query": "transactions",
+      "p50_ms": 3.549,
+      "p95_ms": 4.516,
+      "total": 46,
+      "top_urls": [
+        "https://www.postgresql.org/docs/current/tutorial-transactions.html",
+        "https://www.postgresql.org/docs/current/transactions.html",
+        "https://www.sqlite.org/wal.html",
+        "https://www.sqlite.org/isolation.html",
+        "https://www.postgresql.org/docs/current/internals.html",
+        "https://www.postgresql.org/docs/current/server-programming.html",
+        "https://www.postgresql.org/docs/current/glossary.html",
+        "https://www.sqlite.org/about.html",
+        "https://www.sqlite.org/sharedcache.html",
+        "https://www.postgresql.org/docs/current/bgworker.html"
+      ]
+    },
+    {
+      "query": "git rebase",
+      "p50_ms": 3.093,
+      "p95_ms": 12.43,
+      "total": 100,
+      "top_urls": [
+        "https://git-scm.com/docs/git-rebase",
+        "https://git-scm.com/docs/git-svn",
+        "https://git-scm.com/docs/git-branch",
+        "https://git-scm.com/docs/git-pull",
+        "https://git-scm.com/docs/gitworkflows",
+        "https://git-scm.com/docs/git-commit",
+        "https://git-scm.com/docs/git-submodule",
+        "https://git-scm.com/docs/git-cherry",
+        "https://git-scm.com/docs/git-config",
+        "https://git-scm.com/docs/gitrevisions"
+      ]
+    },
+    {
+      "query": "git stash",
+      "p50_ms": 2.75,
+      "p95_ms": 3.172,
+      "total": 99,
+      "top_urls": [
+        "https://git-scm.com/docs/git-stash",
+        "https://git-scm.com/docs/gitfaq",
+        "https://git-scm.com/docs/git-merge",
+        "https://git-scm.com/docs/git-switch",
+        "https://git-scm.com/docs/git-checkout",
+        "https://git-scm.com/docs/git-status",
+        "https://git-scm.com/docs/git-rebase",
+        "https://git-scm.com/docs/gitcli",
+        "https://git-scm.com/docs/git-bundle",
+        "https://git-scm.com/docs"
+      ]
+    },
+    {
+      "query": "git restore",
+      "p50_ms": 3.446,
+      "p95_ms": 7.667,
+      "total": 110,
+      "top_urls": [
+        "https://git-scm.com/docs/git-restore",
+        "https://git-scm.com/docs/git-revert",
+        "https://git-scm.com/docs/git-checkout",
+        "https://git-scm.com/docs/gitcli",
+        "https://git-scm.com/docs/git-switch",
+        "https://git-scm.com/docs/git-clean",
+        "https://git-scm.com/docs/git-reset",
+        "https://git-scm.com/docs/git",
+        "https://git-scm.com/docs/giteveryday",
+        "https://git-scm.com/docs"
+      ]
+    },
+    {
+      "query": "git log",
+      "p50_ms": 4.305,
+      "p95_ms": 10.085,
+      "total": 237,
+      "top_urls": [
+        "https://git-scm.com/docs/git-log",
+        "https://git-scm.com/docs/git",
+        "https://git-scm.com/docs/giteveryday",
+        "https://git-scm.com/docs/gittutorial",
+        "https://git-scm.com/docs/gitsubmodules",
+        "https://git-scm.com/docs/git-bisect",
+        "https://git-scm.com/docs/gitcli",
+        "https://git-scm.com/docs/gitignore",
+        "https://git-scm.com/docs/git-svn",
+        "https://git-scm.com/docs/git-remote"
+      ]
+    },
+    {
+      "query": "Python 3",
+      "p50_ms": 27.75,
+      "p95_ms": 50.188,
+      "total": 118,
+      "top_urls": [
+        "https://docs.python.org/ja/3/",
+        "https://docs.python.org/ja/3/about.html",
+        "https://docs.python.org/ja/3/bugs.html",
+        "https://docs.python.org/ja/3/builtins/constants.html",
+        "https://docs.python.org/ja/3/builtins/exceptions.html",
+        "https://docs.python.org/ja/3/builtins/functions.html",
+        "https://docs.python.org/ja/3/builtins/index.html",
+        "https://docs.python.org/ja/3/builtins/stdtypes.html",
+        "https://docs.python.org/ja/3/builtins/threadsafety.html",
+        "https://docs.python.org/ja/3/builtins/time-complexity.html"
+      ]
+    },
+    {
+      "query": "git a",
+      "p50_ms": 21.913,
+      "p95_ms": 29.175,
+      "total": 246,
+      "top_urls": [
+        "https://git-scm.com/docs",
+        "https://git-scm.com/docs/api-trace2",
+        "https://git-scm.com/docs/git",
+        "https://git-scm.com/docs/git-add",
+        "https://git-scm.com/docs/git-am",
+        "https://git-scm.com/docs/git-annotate",
+        "https://git-scm.com/docs/git-apply",
+        "https://git-scm.com/docs/git-archimport",
+        "https://git-scm.com/docs/git-archive",
+        "https://git-scm.com/docs/git-backfill"
+      ]
+    },
+    {
+      "query": "SQLite 日本",
+      "p50_ms": 39.941,
+      "p95_ms": 47.044,
+      "total": 0,
+      "top_urls": []
+    },
+    {
+      "query": "京都",
+      "p50_ms": 31.506,
+      "p95_ms": 33.716,
+      "total": 0,
+      "top_urls": []
+    },
+    {
+      "query": "日",
+      "p50_ms": 27.317,
+      "p95_ms": 48.731,
+      "total": 213,
+      "top_urls": [
+        "https://developer.mozilla.org/ja/docs/Web",
+        "https://developer.mozilla.org/ja/docs/Web/API",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbortController",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbortSignal",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbsoluteOrientationSensor",
+        "https://developer.mozilla.org/ja/docs/Web/API/AbstractRange",
+        "https://developer.mozilla.org/ja/docs/Web/API/Accelerometer",
+        "https://developer.mozilla.org/ja/docs/Web/API/AesCbcParams",
+        "https://developer.mozilla.org/ja/docs/Web/API/AesCtrParams",
+        "https://developer.mozilla.org/ja/docs/Web/API/AesDerivedKeyParams"
+      ]
+    },
+    {
+      "query": "by",
+      "p50_ms": 20.858,
+      "p95_ms": 27.73,
+      "total": 347,
+      "top_urls": [
+        "https://www.sqlite.org/lang.html",
+        "https://www.sqlite.org/pragma.html",
+        "https://www.sqlite.org/tempfiles.html",
+        "https://developer.mozilla.org/ja/docs/Web/API",
+        "https://developer.mozilla.org/ja/docs/Web/API/AnalyserNode",
+        "https://developer.mozilla.org/ja/docs/Web/API/Document_Object_Model",
+        "https://developer.mozilla.org/ja/docs/Web/API/HTML_DOM_API",
+        "https://developer.mozilla.org/ja/docs/Web/API/URL",
+        "https://developer.mozilla.org/ja/docs/Web/API/Web_Animations_API/Using_the_Web_Animations_API",
+        "https://developer.mozilla.org/ja/docs/Web/API/Web_Workers_API/Using_web_workers"
+      ]
+    },
+    {
+      "query": "nonexistent-query-xyz",
+      "p50_ms": 1.056,
+      "p95_ms": 1.652,
+      "total": 0,
+      "top_urls": []
+    }
+  ],
+  "engine_ref": "969da92"
+}

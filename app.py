@@ -36,6 +36,32 @@ def title_match(title, query):
     return sum(word in title_words for word in set(query_words)) / len(set(query_words))
 
 
+def short_terms(title, body):
+    """Distinct exact character postings; a newline prevents cross-field bigrams."""
+    text = (title + '\n' + body).translate(str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'))
+    terms = {f'u{ord(char):x}' for char in text}
+    terms.update(f'b{ord(a):x}x{ord(b):x}' for a, b in zip(text, text[1:]))
+    return ' '.join(sorted(terms))
+
+
+def short_match_query(tokens):
+    terms = []
+    for token in tokens:
+        text = token.translate(str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'))
+        if len(text) == 1:
+            terms.append(f'u{ord(text):x}')
+        else:
+            terms.extend(f'b{ord(a):x}x{ord(b):x}' for a, b in zip(text, text[1:]))
+    return ' AND '.join('"' + term + '"' for term in sorted(set(terms)))
+
+
+def short_index_ready(db):
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE name='search_meta' AND type='table'").fetchone():
+        return False
+    row = db.execute("SELECT value FROM search_meta WHERE key='short_index_version'").fetchone()
+    return bool(row and row[0] == '2')
+
+
 def connect():
     db = sqlite3.connect(DB, timeout=10)
     db.create_function('url_host', 1, lambda url: (urlsplit(url).hostname or '').lower().rstrip('.'), deterministic=True)
@@ -48,6 +74,14 @@ def init_db():
     with connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS pages (url TEXT PRIMARY KEY, title TEXT, body TEXT, updated TEXT)')
         db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(url UNINDEXED, title, body, tokenize='trigram')")
+        had_short_index = db.execute("SELECT 1 FROM sqlite_master WHERE name='short_search' AND type='table'").fetchone()
+        db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS short_search USING fts5(url UNINDEXED, terms, tokenize='ascii')")
+        db.execute('CREATE TABLE IF NOT EXISTS search_meta (key TEXT PRIMARY KEY, value TEXT)')
+        if not had_short_index or not short_index_ready(db):
+            db.execute('DELETE FROM short_search')
+            rows = db.execute('SELECT rowid,url,title,body FROM search')
+            db.executemany('INSERT INTO short_search(rowid,url,terms) VALUES (?,?,?)', ((row['rowid'], row['url'], short_terms(row['title'], row['body'])) for row in rows))
+            db.execute("INSERT OR REPLACE INTO search_meta VALUES ('short_index_version','2')")
         db.execute('CREATE TABLE IF NOT EXISTS failures (url TEXT PRIMARY KEY, reason TEXT, updated TEXT)')
         db.execute("CREATE TABLE IF NOT EXISTS crawls (id INTEGER PRIMARY KEY, seed TEXT, started TEXT, finished TEXT, status TEXT, indexed INTEGER, message TEXT, events TEXT)")
         db.execute("UPDATE crawls SET status='interrupted', finished=?, message='サーバー停止により中断しました' WHERE status='running'", (utc_now(),))
@@ -120,8 +154,12 @@ class Page(HTMLParser):
 def save_page(url, title, body):
     with connect() as db:
         db.execute('INSERT OR REPLACE INTO pages VALUES (?, ?, ?, ?)', (url, title, body, time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())))
+        if short_index_ready(db):
+            db.execute('DELETE FROM short_search WHERE rowid IN (SELECT rowid FROM search WHERE url=?)', (url,))
         db.execute('DELETE FROM search WHERE url = ?', (url,))
-        db.execute('INSERT INTO search VALUES (?, ?, ?)', (url, title, body))
+        rowid = db.execute('INSERT INTO search VALUES (?, ?, ?)', (url, title, body)).lastrowid
+        if short_index_ready(db):
+            db.execute('INSERT INTO short_search(rowid,url,terms) VALUES (?,?,?)', (rowid, url, short_terms(title, body)))
 
 
 def list_pages(query='', page=1):
@@ -139,6 +177,8 @@ def list_pages(query='', page=1):
 def delete_page(url):
     with connect() as db:
         deleted = db.execute('DELETE FROM pages WHERE url = ?', (url,)).rowcount
+        if short_index_ready(db):
+            db.execute('DELETE FROM short_search WHERE rowid IN (SELECT rowid FROM search WHERE url=?)', (url,))
         db.execute('DELETE FROM search WHERE url = ?', (url,))
     return bool(deleted)
 
@@ -163,24 +203,46 @@ def search_page(query, page=1, page_size=10, site=''):
         return {'results': [], 'total': 0, 'page': 1, 'pages': 0}
     tokens = query.split()
     with connect() as db:
+        # Counts, ranked IDs and deferred body reads must share one snapshot.
+        db.execute('BEGIN')
         if all(len(t) >= 3 for t in tokens):
             match = ' AND '.join('"' + t.replace('"', '""') + '"' for t in tokens)
             source, where, params = 'search', 'search MATCH ?', (match,)
             order = 'bm25(search,0,5,1), url'
         else:
-            # FTS trigram cannot match one- or two-character Japanese queries.
-            source = 'pages'
-            where = ' AND '.join('(instr(lower(title),lower(?))>0 OR instr(lower(body),lower(?))>0)' for _ in tokens)
-            params = tuple(t for t in tokens for _ in range(2))
-            order = 'url'
+            # Intersect posting lists once; do not rerun an FTS MATCH for each candidate rowid.
+            long_tokens = [token for token in tokens if len(token) >= 3]
+            short_tokens = [token for token in tokens if len(token) < 3]
+            indexed = short_index_ready(db)
+            source = 'search' if indexed or long_tokens else 'pages'
+            clauses, params = [], ()
+            if indexed:
+                candidates = []
+                if long_tokens:
+                    candidates.append('SELECT rowid FROM search WHERE search MATCH ?')
+                    params += (' AND '.join('"' + token.replace('"', '""') + '"' for token in long_tokens),)
+                candidates.append('SELECT rowid FROM short_search WHERE short_search MATCH ?')
+                params += (short_match_query(short_tokens),)
+                clauses.append('rowid IN (' + ' INTERSECT '.join(candidates) + ')')
+            elif long_tokens:
+                clauses.append('search MATCH ?')
+                params += (' AND '.join('"' + token.replace('"', '""') + '"' for token in long_tokens),)
+            if not indexed:
+                clauses.extend('(instr(lower(title),lower(?))>0 OR instr(lower(body),lower(?))>0)' for _ in tokens)
+                params += tuple(token for token in tokens for _ in range(2))
+            where, order = ' AND '.join(clauses), 'url'
         if site.strip():
             where = f'({where}) AND url_host(url) = ?'
             params = (*params, site.strip().lower().rstrip('.'))
         total = db.execute(f'SELECT count(*) FROM {source} WHERE {where}', params).fetchone()[0]
         pages = (total + page_size - 1) // page_size
         page = min(page, max(1, pages))
-        rows = db.execute(f'SELECT url,title,body FROM {source} WHERE {where} ORDER BY title_match(title, ?) DESC, {order} LIMIT ? OFFSET ?', (*params, query, page_size, (page - 1) * page_size)).fetchall()
-        results = [{'url': row['url'], 'title': row['title'], 'excerpt': excerpt(row['body'], tokens)} for row in rows]
+        rows = db.execute(f'SELECT rowid,url,title FROM {source} WHERE {where} ORDER BY title_match(title, ?) DESC, {order} LIMIT ? OFFSET ?', (*params, query, page_size, (page - 1) * page_size)).fetchall()
+        bodies = {}
+        if rows:
+            placeholders = ','.join('?' for _ in rows)
+            bodies = {row['rowid']: row['body'] for row in db.execute(f'SELECT rowid,body FROM {source} WHERE rowid IN ({placeholders})', tuple(row['rowid'] for row in rows))}
+        results = [{'url': row['url'], 'title': row['title'], 'excerpt': excerpt(bodies[row['rowid']], tokens)} for row in rows]
         return {'results': results, 'total': total, 'page': page, 'pages': pages}
 
 

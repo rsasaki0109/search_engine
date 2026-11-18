@@ -37,6 +37,7 @@ class BackupTests(unittest.TestCase):
         app.DB = restored
         self.assertEqual(len(app.search('Python')), 1)
         self.assertEqual(len(app.search('日本語')), 1)
+        self.assertEqual(len(app.search('日本')), 1)
         self.assertEqual(len(app.crawl_history()), 1)
         self.assertEqual(len(app.failed_pages()), 1)
         with app.connect() as db:
@@ -71,6 +72,13 @@ class BackupTests(unittest.TestCase):
         with app.connect() as db:
             db.execute('DELETE FROM search')
         with self.assertRaisesRegex(ValueError, '件数'):
+            backup.copy_database(app.DB, self.root / 'out.db')
+        self.assertFalse((self.root / 'out.db').exists())
+
+    def test_missing_short_index_rows_are_rejected(self):
+        with app.connect() as db:
+            db.execute('DELETE FROM short_search')
+        with self.assertRaisesRegex(ValueError, '短い語'):
             backup.copy_database(app.DB, self.root / 'out.db')
         self.assertFalse((self.root / 'out.db').exists())
 

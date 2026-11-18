@@ -5,3 +5,4 @@ search.db-*
 .venv/
 evaluation/local-report.json
 backups/
+evaluation/local-performance.json

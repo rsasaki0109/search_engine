@@ -222,6 +222,46 @@ class SearchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '大きすぎます'):
                 app.fetch('https://example.com/')
 
+    def test_short_index_updates_and_deletes(self):
+        app.save_page('https://example.com/', '京都', '日本')
+        self.assertEqual(len(app.search('京都')), 1)
+        app.save_page('https://example.com/', '東京', '世界')
+        self.assertEqual(app.search('京都'), [])
+        self.assertEqual(app.search('日本'), [])
+        self.assertEqual(len(app.search('東京')), 1)
+        app.delete_page('https://example.com/')
+        self.assertEqual(app.search('東京'), [])
+        with app.connect() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM short_search').fetchone()[0], 0)
+
+    def test_short_index_does_not_join_fields_or_interpret_punctuation(self):
+        app.save_page('https://example.com/a', 'a', 'b É *日本')
+        app.save_page('https://example.com/b', 'Other', 'é')
+        self.assertEqual(app.search('ab'), [])
+        self.assertEqual(len(app.search('*日')), 1)
+        self.assertEqual(len(app.search('É')), 1)
+        self.assertEqual(len(app.search('é')), 1)
+        self.assertEqual(app.search('"*'), [])
+
+    def test_existing_database_migrates_without_re_crawling(self):
+        app.save_page('https://example.com/', '京都', '日本の資料')
+        with app.connect() as db:
+            db.execute('DROP TABLE short_search')
+            db.execute('DROP TABLE search_meta')
+        self.assertEqual(len(app.search('京都')), 1)  # Legacy read fallback.
+        app.init_db()
+        with app.connect() as db:
+            self.assertTrue(app.short_index_ready(db))
+            self.assertEqual(db.execute('SELECT count(*) FROM short_search').fetchone()[0], 1)
+        self.assertEqual(len(app.search('京都')), 1)
+        app.init_db()
+        self.assertEqual(app.list_pages()['total'], 1)
+
+    def test_mixed_query_uses_same_long_word_case_rules_as_fts(self):
+        app.save_page('https://example.com/', 'Résumé', 'résumé x')
+        self.assertEqual(len(app.search('RÉSUMÉ')), 1)
+        self.assertEqual(len(app.search('RÉSUMÉ x')), 1)
+
     def test_html_extraction(self):
         page = app.Page()
         page.feed('<title>Hello &amp; world</title><script>secret</script><p>Visible</p><a href="/next">Next</a>')
