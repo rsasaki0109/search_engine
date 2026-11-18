@@ -55,6 +55,37 @@ class HTTPTests(unittest.TestCase):
     def post(self, path, data, headers=None):
         return self.request('POST', path, json.dumps(data), {'Content-Type': 'application/json', **(headers or {})})
 
+    def test_cache_hits_and_invalidates_after_committed_changes(self):
+        url = 'https://example.com/ref'
+        app.save_page(url, 'Python Original', 'old body')
+        path = '/api/search?q=Python&site=example.com'
+        with patch.object(app, 'search_page', wraps=app.search_page) as search:
+            _, before = self.request('GET', path)
+            self.assertEqual(self.request('GET', path), (200, before))
+            self.assertEqual(search.call_count, 1)
+            self.assertEqual(json.loads(self.request('GET', '/api/search?q=Python&site=other.test')[1])['total'], 0)
+            self.assertEqual(search.call_count, 2)
+            app.save_page(url, 'Python Updated', 'new body')
+            self.assertIn('Python Updated', self.request('GET', path)[1])
+            app.delete_page(url)
+            self.assertEqual(json.loads(self.request('GET', path)[1])['total'], 0)
+            self.assertEqual(search.call_count, 4)
+
+    def test_cache_does_not_refill_from_search_started_before_commit(self):
+        url = 'https://example.com/ref'
+        app.save_page(url, 'Python Original', 'old body')
+        path = '/api/search?q=Python'
+        search_page = app.search_page
+
+        def read_then_update(*args, **kwargs):
+            result = search_page(*args, **kwargs)
+            app.save_page(url, 'Python Updated', 'new body')
+            return result
+
+        with patch.object(app, 'search_page', side_effect=read_then_update):
+            self.assertIn('Python Original', self.request('GET', path)[1])
+        self.assertIn('Python Updated', self.request('GET', path)[1])
+
     def test_home_search_and_pagination(self):
         status, html = self.request('GET', '/')
         self.assertEqual(status, 200)

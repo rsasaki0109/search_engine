@@ -1,0 +1,531 @@
+{
+  "date": "2026-11-18",
+  "scope": "Warm loopback HTTP with 27 fixed queries, with and without same-content page refresh",
+  "identical_response_bytes_for_all_queries": true,
+  "runs": {
+    "cache-disabled": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 100000,
+      "synthetic_pages": 99498,
+      "corpus_sha256": "003186b8c98f18d6aa104f3e2797b7f12dd0bf97a03671273bf5f132c97930d5",
+      "cache_entries": 0,
+      "journal_mode": "wal",
+      "refresh_target_per_second": 0,
+      "refreshes": 0,
+      "refresh_p95_ms": null,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 121.0,
+      "p50_ms": 55.0,
+      "p95_ms": 163.215,
+      "p99_ms": 249.677,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 37.618,
+          "response_sha256": "db5bd78dabd477f9d20a71ad460d23fc66aaceb6248b31db1c31c9ece12727fd"
+        },
+        "pathlib": {
+          "p95_ms": 38.36,
+          "response_sha256": "b2df0584e19ad85d9406dad3e6296bd265ac66aa8ae985131a426962c3799ef4"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 306.136,
+          "response_sha256": "5c151b13352d7c2c1fc86b7eba32eb18a83382b38ab615de0b3c28d0f3d1959c"
+        },
+        "argparse": {
+          "p95_ms": 62.931,
+          "response_sha256": "a229c7b6310369c1f29d5b6fc340988895aca0619abfcc159aa99672f9e4f1d1"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 28.166,
+          "response_sha256": "a691e36d38ca23b56a47b6a8b8326d2d34ad37a36cedbf531a5eb841e06d0b3a"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 124.162,
+          "response_sha256": "8044052b84ac9c849c5ebb5c88de78ac7921bff886842b407b2875e8183273ec"
+        },
+        "UPSERT": {
+          "p95_ms": 43.068,
+          "response_sha256": "b5e11381f5da801cae30f9cbe4cc2d5806887321ed813dfde91eb7c1c3b4fef1"
+        },
+        "write ahead log": {
+          "p95_ms": 127.816,
+          "response_sha256": "00943c292b8299331cd44b0692c3547b433ab99c3ce2b375e71cc3ff8e32e2e2"
+        },
+        "fetch": {
+          "p95_ms": 92.875,
+          "response_sha256": "4339e37d08b946539807858d18dff6c0984c838ee6fd18288eb67637a8ec7633"
+        },
+        "Promise": {
+          "p95_ms": 84.102,
+          "response_sha256": "d3f3932730df64856ab1ba8791eb2d970c3eb0530a468ceb8ba1d893a71a6b54"
+        },
+        "URL": {
+          "p95_ms": 55.243,
+          "response_sha256": "25a5ad056ed95c030ff3156c650434cf9499817e7861ecb3ebebc3e80bd39a7d"
+        },
+        "CORS": {
+          "p95_ms": 50.932,
+          "response_sha256": "3e1c5e2bb6d8b41bb4c4a83d6fa172cb446a006068cf44d79ee8b2c9af81f450"
+        },
+        "full text search": {
+          "p95_ms": 92.378,
+          "response_sha256": "db5fe01f6bcb9e4abb010526ebdd7ca3f2e38bebe9d8e7fad2657dc07713af53"
+        },
+        "indexes": {
+          "p95_ms": 122.145,
+          "response_sha256": "3e8f25809b423abc2f085e69693ebfaf205f71e9dd962b677e5bf8f42302836e"
+        },
+        "EXPLAIN": {
+          "p95_ms": 106.083,
+          "response_sha256": "66f4da306483d7cd992085721bfae99eb966f60e4b6f3365e2f896635594226e"
+        },
+        "transactions": {
+          "p95_ms": 210.6,
+          "response_sha256": "1c268636da34608fbd4e78f959c3c68f053526cab1da3e4351bfbef3cc5b49af"
+        },
+        "git rebase": {
+          "p95_ms": 64.598,
+          "response_sha256": "7b3b1999b0417a89fd2d13cef3fded82e08998756ed13ceb16b0eb3317fddb33"
+        },
+        "git stash": {
+          "p95_ms": 63.375,
+          "response_sha256": "e0d9228d9964827fd55b8b11b18db19c8561af7465600d237c26029fd9efe4ee"
+        },
+        "git restore": {
+          "p95_ms": 169.598,
+          "response_sha256": "308a8b385fb7b0e3303ed9e6d237c040c6d785bac9f5a8f50d0a378ad90d8ad1"
+        },
+        "git log": {
+          "p95_ms": 82.82,
+          "response_sha256": "44adb1e96244cf621d70bd848e8a572a95ef30632801614fc472c90e12b7fe19"
+        },
+        "Python 3": {
+          "p95_ms": 167.08,
+          "response_sha256": "b1831e3ce3704387997e0435a4628068691b9a13975308c475dd9a6dc2f63bb0"
+        },
+        "git a": {
+          "p95_ms": 159.404,
+          "response_sha256": "d80c865caca5f86bf246b093e13b06a1972132f851e89863b6aa2b18029dccc6"
+        },
+        "SQLite 日本": {
+          "p95_ms": 66.928,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 21.424,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 83.083,
+          "response_sha256": "8b96ef60ac6b4e1674ff2cc786e10bf11b9773e4270051cca21035d62d30d191"
+        },
+        "by": {
+          "p95_ms": 145.672,
+          "response_sha256": "97d1cda3255ddc0fc9ce9144fbfd3d64d9b2ed51ec7f700a3377ebca00ea4f7d"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 27.585,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    },
+    "cache-enabled": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 100000,
+      "synthetic_pages": 99498,
+      "corpus_sha256": "003186b8c98f18d6aa104f3e2797b7f12dd0bf97a03671273bf5f132c97930d5",
+      "cache_entries": 256,
+      "journal_mode": "wal",
+      "refresh_target_per_second": 0,
+      "refreshes": 0,
+      "refresh_p95_ms": null,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 1103.9,
+      "p50_ms": 6.994,
+      "p95_ms": 8.583,
+      "p99_ms": 10.678,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 8.462,
+          "response_sha256": "db5bd78dabd477f9d20a71ad460d23fc66aaceb6248b31db1c31c9ece12727fd"
+        },
+        "pathlib": {
+          "p95_ms": 8.621,
+          "response_sha256": "b2df0584e19ad85d9406dad3e6296bd265ac66aa8ae985131a426962c3799ef4"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 8.293,
+          "response_sha256": "5c151b13352d7c2c1fc86b7eba32eb18a83382b38ab615de0b3c28d0f3d1959c"
+        },
+        "argparse": {
+          "p95_ms": 8.483,
+          "response_sha256": "a229c7b6310369c1f29d5b6fc340988895aca0619abfcc159aa99672f9e4f1d1"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 8.972,
+          "response_sha256": "a691e36d38ca23b56a47b6a8b8326d2d34ad37a36cedbf531a5eb841e06d0b3a"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 7.929,
+          "response_sha256": "8044052b84ac9c849c5ebb5c88de78ac7921bff886842b407b2875e8183273ec"
+        },
+        "UPSERT": {
+          "p95_ms": 8.519,
+          "response_sha256": "b5e11381f5da801cae30f9cbe4cc2d5806887321ed813dfde91eb7c1c3b4fef1"
+        },
+        "write ahead log": {
+          "p95_ms": 8.504,
+          "response_sha256": "00943c292b8299331cd44b0692c3547b433ab99c3ce2b375e71cc3ff8e32e2e2"
+        },
+        "fetch": {
+          "p95_ms": 8.913,
+          "response_sha256": "4339e37d08b946539807858d18dff6c0984c838ee6fd18288eb67637a8ec7633"
+        },
+        "Promise": {
+          "p95_ms": 8.85,
+          "response_sha256": "d3f3932730df64856ab1ba8791eb2d970c3eb0530a468ceb8ba1d893a71a6b54"
+        },
+        "URL": {
+          "p95_ms": 8.233,
+          "response_sha256": "25a5ad056ed95c030ff3156c650434cf9499817e7861ecb3ebebc3e80bd39a7d"
+        },
+        "CORS": {
+          "p95_ms": 8.469,
+          "response_sha256": "3e1c5e2bb6d8b41bb4c4a83d6fa172cb446a006068cf44d79ee8b2c9af81f450"
+        },
+        "full text search": {
+          "p95_ms": 8.453,
+          "response_sha256": "db5fe01f6bcb9e4abb010526ebdd7ca3f2e38bebe9d8e7fad2657dc07713af53"
+        },
+        "indexes": {
+          "p95_ms": 8.238,
+          "response_sha256": "3e8f25809b423abc2f085e69693ebfaf205f71e9dd962b677e5bf8f42302836e"
+        },
+        "EXPLAIN": {
+          "p95_ms": 8.4,
+          "response_sha256": "66f4da306483d7cd992085721bfae99eb966f60e4b6f3365e2f896635594226e"
+        },
+        "transactions": {
+          "p95_ms": 7.807,
+          "response_sha256": "1c268636da34608fbd4e78f959c3c68f053526cab1da3e4351bfbef3cc5b49af"
+        },
+        "git rebase": {
+          "p95_ms": 8.133,
+          "response_sha256": "7b3b1999b0417a89fd2d13cef3fded82e08998756ed13ceb16b0eb3317fddb33"
+        },
+        "git stash": {
+          "p95_ms": 9.11,
+          "response_sha256": "e0d9228d9964827fd55b8b11b18db19c8561af7465600d237c26029fd9efe4ee"
+        },
+        "git restore": {
+          "p95_ms": 9.674,
+          "response_sha256": "308a8b385fb7b0e3303ed9e6d237c040c6d785bac9f5a8f50d0a378ad90d8ad1"
+        },
+        "git log": {
+          "p95_ms": 8.706,
+          "response_sha256": "44adb1e96244cf621d70bd848e8a572a95ef30632801614fc472c90e12b7fe19"
+        },
+        "Python 3": {
+          "p95_ms": 8.44,
+          "response_sha256": "b1831e3ce3704387997e0435a4628068691b9a13975308c475dd9a6dc2f63bb0"
+        },
+        "git a": {
+          "p95_ms": 8.246,
+          "response_sha256": "d80c865caca5f86bf246b093e13b06a1972132f851e89863b6aa2b18029dccc6"
+        },
+        "SQLite 日本": {
+          "p95_ms": 8.208,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 8.866,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 9.517,
+          "response_sha256": "8b96ef60ac6b4e1674ff2cc786e10bf11b9773e4270051cca21035d62d30d191"
+        },
+        "by": {
+          "p95_ms": 8.221,
+          "response_sha256": "97d1cda3255ddc0fc9ce9144fbfd3d64d9b2ed51ec7f700a3377ebca00ea4f7d"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 8.95,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    },
+    "refresh-cache-disabled": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 100000,
+      "synthetic_pages": 99498,
+      "corpus_sha256": "003186b8c98f18d6aa104f3e2797b7f12dd0bf97a03671273bf5f132c97930d5",
+      "cache_entries": 0,
+      "journal_mode": "wal",
+      "refresh_target_per_second": 20,
+      "refreshes": 191,
+      "refresh_p95_ms": 45.495,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 110.3,
+      "p50_ms": 60.075,
+      "p95_ms": 176.78,
+      "p99_ms": 262.93,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 48.169,
+          "response_sha256": "db5bd78dabd477f9d20a71ad460d23fc66aaceb6248b31db1c31c9ece12727fd"
+        },
+        "pathlib": {
+          "p95_ms": 48.251,
+          "response_sha256": "b2df0584e19ad85d9406dad3e6296bd265ac66aa8ae985131a426962c3799ef4"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 308.777,
+          "response_sha256": "5c151b13352d7c2c1fc86b7eba32eb18a83382b38ab615de0b3c28d0f3d1959c"
+        },
+        "argparse": {
+          "p95_ms": 63.281,
+          "response_sha256": "a229c7b6310369c1f29d5b6fc340988895aca0619abfcc159aa99672f9e4f1d1"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 32.414,
+          "response_sha256": "a691e36d38ca23b56a47b6a8b8326d2d34ad37a36cedbf531a5eb841e06d0b3a"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 130.63,
+          "response_sha256": "8044052b84ac9c849c5ebb5c88de78ac7921bff886842b407b2875e8183273ec"
+        },
+        "UPSERT": {
+          "p95_ms": 39.211,
+          "response_sha256": "b5e11381f5da801cae30f9cbe4cc2d5806887321ed813dfde91eb7c1c3b4fef1"
+        },
+        "write ahead log": {
+          "p95_ms": 125.451,
+          "response_sha256": "00943c292b8299331cd44b0692c3547b433ab99c3ce2b375e71cc3ff8e32e2e2"
+        },
+        "fetch": {
+          "p95_ms": 91.99,
+          "response_sha256": "4339e37d08b946539807858d18dff6c0984c838ee6fd18288eb67637a8ec7633"
+        },
+        "Promise": {
+          "p95_ms": 92.728,
+          "response_sha256": "d3f3932730df64856ab1ba8791eb2d970c3eb0530a468ceb8ba1d893a71a6b54"
+        },
+        "URL": {
+          "p95_ms": 57.373,
+          "response_sha256": "25a5ad056ed95c030ff3156c650434cf9499817e7861ecb3ebebc3e80bd39a7d"
+        },
+        "CORS": {
+          "p95_ms": 57.921,
+          "response_sha256": "3e1c5e2bb6d8b41bb4c4a83d6fa172cb446a006068cf44d79ee8b2c9af81f450"
+        },
+        "full text search": {
+          "p95_ms": 97.455,
+          "response_sha256": "db5fe01f6bcb9e4abb010526ebdd7ca3f2e38bebe9d8e7fad2657dc07713af53"
+        },
+        "indexes": {
+          "p95_ms": 116.259,
+          "response_sha256": "3e8f25809b423abc2f085e69693ebfaf205f71e9dd962b677e5bf8f42302836e"
+        },
+        "EXPLAIN": {
+          "p95_ms": 126.087,
+          "response_sha256": "66f4da306483d7cd992085721bfae99eb966f60e4b6f3365e2f896635594226e"
+        },
+        "transactions": {
+          "p95_ms": 213.688,
+          "response_sha256": "1c268636da34608fbd4e78f959c3c68f053526cab1da3e4351bfbef3cc5b49af"
+        },
+        "git rebase": {
+          "p95_ms": 74.866,
+          "response_sha256": "7b3b1999b0417a89fd2d13cef3fded82e08998756ed13ceb16b0eb3317fddb33"
+        },
+        "git stash": {
+          "p95_ms": 69.286,
+          "response_sha256": "e0d9228d9964827fd55b8b11b18db19c8561af7465600d237c26029fd9efe4ee"
+        },
+        "git restore": {
+          "p95_ms": 188.651,
+          "response_sha256": "308a8b385fb7b0e3303ed9e6d237c040c6d785bac9f5a8f50d0a378ad90d8ad1"
+        },
+        "git log": {
+          "p95_ms": 87.273,
+          "response_sha256": "44adb1e96244cf621d70bd848e8a572a95ef30632801614fc472c90e12b7fe19"
+        },
+        "Python 3": {
+          "p95_ms": 168.596,
+          "response_sha256": "b1831e3ce3704387997e0435a4628068691b9a13975308c475dd9a6dc2f63bb0"
+        },
+        "git a": {
+          "p95_ms": 162.508,
+          "response_sha256": "d80c865caca5f86bf246b093e13b06a1972132f851e89863b6aa2b18029dccc6"
+        },
+        "SQLite 日本": {
+          "p95_ms": 72.29,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 17.369,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 85.336,
+          "response_sha256": "8b96ef60ac6b4e1674ff2cc786e10bf11b9773e4270051cca21035d62d30d191"
+        },
+        "by": {
+          "p95_ms": 141.532,
+          "response_sha256": "97d1cda3255ddc0fc9ce9144fbfd3d64d9b2ed51ec7f700a3377ebca00ea4f7d"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 31.214,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    },
+    "refresh-cache-enabled": {
+      "environment": {
+        "python": "3.12.14",
+        "sqlite": "3.53.1"
+      },
+      "pages": 100000,
+      "synthetic_pages": 99498,
+      "corpus_sha256": "003186b8c98f18d6aa104f3e2797b7f12dd0bf97a03671273bf5f132c97930d5",
+      "cache_entries": 256,
+      "journal_mode": "wal",
+      "refresh_target_per_second": 20,
+      "refreshes": 186,
+      "refresh_p95_ms": 45.648,
+      "workers": 8,
+      "rounds": 40,
+      "requests": 1080,
+      "requests_per_second": 112.3,
+      "p50_ms": 57.476,
+      "p95_ms": 178.773,
+      "p99_ms": 262.877,
+      "queries": {
+        "json dumps": {
+          "p95_ms": 42.135,
+          "response_sha256": "db5bd78dabd477f9d20a71ad460d23fc66aaceb6248b31db1c31c9ece12727fd"
+        },
+        "pathlib": {
+          "p95_ms": 49.202,
+          "response_sha256": "b2df0584e19ad85d9406dad3e6296bd265ac66aa8ae985131a426962c3799ef4"
+        },
+        "sqlite3 connect": {
+          "p95_ms": 308.687,
+          "response_sha256": "5c151b13352d7c2c1fc86b7eba32eb18a83382b38ab615de0b3c28d0f3d1959c"
+        },
+        "argparse": {
+          "p95_ms": 58.522,
+          "response_sha256": "a229c7b6310369c1f29d5b6fc340988895aca0619abfcc159aa99672f9e4f1d1"
+        },
+        "FTS5 bm25": {
+          "p95_ms": 32.798,
+          "response_sha256": "a691e36d38ca23b56a47b6a8b8326d2d34ad37a36cedbf531a5eb841e06d0b3a"
+        },
+        "SELECT ORDER BY": {
+          "p95_ms": 134.088,
+          "response_sha256": "8044052b84ac9c849c5ebb5c88de78ac7921bff886842b407b2875e8183273ec"
+        },
+        "UPSERT": {
+          "p95_ms": 47.629,
+          "response_sha256": "b5e11381f5da801cae30f9cbe4cc2d5806887321ed813dfde91eb7c1c3b4fef1"
+        },
+        "write ahead log": {
+          "p95_ms": 136.707,
+          "response_sha256": "00943c292b8299331cd44b0692c3547b433ab99c3ce2b375e71cc3ff8e32e2e2"
+        },
+        "fetch": {
+          "p95_ms": 91.975,
+          "response_sha256": "4339e37d08b946539807858d18dff6c0984c838ee6fd18288eb67637a8ec7633"
+        },
+        "Promise": {
+          "p95_ms": 87.778,
+          "response_sha256": "d3f3932730df64856ab1ba8791eb2d970c3eb0530a468ceb8ba1d893a71a6b54"
+        },
+        "URL": {
+          "p95_ms": 53.172,
+          "response_sha256": "25a5ad056ed95c030ff3156c650434cf9499817e7861ecb3ebebc3e80bd39a7d"
+        },
+        "CORS": {
+          "p95_ms": 51.514,
+          "response_sha256": "3e1c5e2bb6d8b41bb4c4a83d6fa172cb446a006068cf44d79ee8b2c9af81f450"
+        },
+        "full text search": {
+          "p95_ms": 101.384,
+          "response_sha256": "db5fe01f6bcb9e4abb010526ebdd7ca3f2e38bebe9d8e7fad2657dc07713af53"
+        },
+        "indexes": {
+          "p95_ms": 130.874,
+          "response_sha256": "3e8f25809b423abc2f085e69693ebfaf205f71e9dd962b677e5bf8f42302836e"
+        },
+        "EXPLAIN": {
+          "p95_ms": 111.843,
+          "response_sha256": "66f4da306483d7cd992085721bfae99eb966f60e4b6f3365e2f896635594226e"
+        },
+        "transactions": {
+          "p95_ms": 220.569,
+          "response_sha256": "1c268636da34608fbd4e78f959c3c68f053526cab1da3e4351bfbef3cc5b49af"
+        },
+        "git rebase": {
+          "p95_ms": 72.947,
+          "response_sha256": "7b3b1999b0417a89fd2d13cef3fded82e08998756ed13ceb16b0eb3317fddb33"
+        },
+        "git stash": {
+          "p95_ms": 88.69,
+          "response_sha256": "e0d9228d9964827fd55b8b11b18db19c8561af7465600d237c26029fd9efe4ee"
+        },
+        "git restore": {
+          "p95_ms": 201.153,
+          "response_sha256": "308a8b385fb7b0e3303ed9e6d237c040c6d785bac9f5a8f50d0a378ad90d8ad1"
+        },
+        "git log": {
+          "p95_ms": 83.242,
+          "response_sha256": "44adb1e96244cf621d70bd848e8a572a95ef30632801614fc472c90e12b7fe19"
+        },
+        "Python 3": {
+          "p95_ms": 174.049,
+          "response_sha256": "b1831e3ce3704387997e0435a4628068691b9a13975308c475dd9a6dc2f63bb0"
+        },
+        "git a": {
+          "p95_ms": 178.614,
+          "response_sha256": "d80c865caca5f86bf246b093e13b06a1972132f851e89863b6aa2b18029dccc6"
+        },
+        "SQLite 日本": {
+          "p95_ms": 67.942,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "京都": {
+          "p95_ms": 15.109,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        },
+        "日": {
+          "p95_ms": 87.001,
+          "response_sha256": "8b96ef60ac6b4e1674ff2cc786e10bf11b9773e4270051cca21035d62d30d191"
+        },
+        "by": {
+          "p95_ms": 138.808,
+          "response_sha256": "97d1cda3255ddc0fc9ce9144fbfd3d64d9b2ed51ec7f700a3377ebca00ea4f7d"
+        },
+        "nonexistent-query-xyz": {
+          "p95_ms": 32.317,
+          "response_sha256": "1edca0dd06076b759db5755b7f79c4c8719217d90332f25304794c1fc35fb552"
+        }
+      }
+    }
+  }
+}

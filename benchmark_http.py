@@ -56,7 +56,7 @@ def build_corpus(source, destination, target):
         db.execute("INSERT INTO short_search(short_search) VALUES('optimize')")
 
 
-def measure(db_path, workers, rounds, refresh_hz=0):
+def measure(db_path, workers, rounds, refresh_hz=0, cache_entries=0):
     app.DB = db_path
     cases = json.loads(CASES.read_text())['cases']
     queries = list(dict.fromkeys([case['query'] for case in cases] + EXTRA_QUERIES))
@@ -80,7 +80,7 @@ def measure(db_path, workers, rounds, refresh_hz=0):
             index += 1
             stop_refreshing.wait(max(0, 1 / refresh_hz - (time.perf_counter() - started)))
 
-    with app.ThreadingHTTPServer(('127.0.0.1', 0), QuietHandler) as server:
+    with app.ThreadingHTTPServer(('127.0.0.1', 0), QuietHandler, cache_entries=cache_entries) as server:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
 
@@ -120,7 +120,7 @@ def measure(db_path, workers, rounds, refresh_hz=0):
     values = [elapsed for elapsed, _ in samples]
     return {'environment': {'python': platform.python_version(), 'sqlite': sqlite3.sqlite_version},
             'pages': pages, 'synthetic_pages': synthetic, 'corpus_sha256': digest.hexdigest(),
-            'journal_mode': journal_mode, 'refresh_target_per_second': refresh_hz,
+            'cache_entries': cache_entries, 'journal_mode': journal_mode, 'refresh_target_per_second': refresh_hz,
             'refreshes': len(refresh_times),
             'refresh_p95_ms': round(percentile(refresh_times, 95), 3) if refresh_times else None,
             'workers': workers, 'rounds': rounds, 'requests': len(values),
@@ -139,6 +139,8 @@ def main():
     parser.add_argument('--rounds', type=int, default=16)
     parser.add_argument('--refresh-hz', type=int, default=0, help='Maximum same-content page refreshes per second, on a disposable copy')
     parser.add_argument('--journal', choices=('delete', 'wal'), default='wal', help='Journal mode of the disposable refresh workload')
+    parser.add_argument('--cache-entries', type=int, choices=range(257), metavar='0..256', default=0,
+                        help='Server cache capacity. Existing benchmark default is uncached.')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if not args.db.is_file() or min(args.pages, args.workers, args.rounds) < 1:
@@ -158,9 +160,9 @@ def main():
             app.init_db()
             with closing(sqlite3.connect(copy)) as db:
                 db.execute('PRAGMA journal_mode=' + args.journal)
-            report = measure(copy, args.workers, args.rounds, args.refresh_hz)
+            report = measure(copy, args.workers, args.rounds, args.refresh_hz, args.cache_entries)
     else:
-        report = measure(source, args.workers, args.rounds)
+        report = measure(source, args.workers, args.rounds, cache_entries=args.cache_entries)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print({k: v for k, v in report.items() if k != 'queries'})
 

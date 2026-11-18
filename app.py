@@ -9,12 +9,14 @@ import threading
 import time
 from contextlib import closing
 from html.parser import HTMLParser
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer as BaseThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urljoin, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 from urllib.robotparser import RobotFileParser
+
+from search_cache import SearchResponseCache
 
 DB = Path(__file__).with_name('search.db')
 AGENT = 'LittleSearch/1.0'
@@ -453,9 +455,25 @@ def crawl(seed, limit, urls=None):
 
 
 
+class ThreadingHTTPServer(BaseThreadingHTTPServer):
+    request_queue_size = 32
+
+    def __init__(self, address, handler, *, cache_entries=256):
+        self.search_cache = SearchResponseCache(DB, cache_entries)
+        super().__init__(address, handler)
+
+    def server_close(self):
+        try:
+            super().server_close()
+        finally:
+            self.search_cache.close()
+
+
 class Handler(BaseHTTPRequestHandler):
     def reply(self, value, status=200):
-        data = json.dumps(value, ensure_ascii=False).encode()
+        self.reply_bytes(json.dumps(value, ensure_ascii=False).encode(), status)
+
+    def reply_bytes(self, data, status=200):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
@@ -470,7 +488,20 @@ class Handler(BaseHTTPRequestHandler):
                 page = int(params.get('page', ['1'])[0])
             except ValueError:
                 return self.reply({'error': 'ページ番号は整数を指定してください'}, 400)
-            self.reply(search_page(params.get('q', [''])[0], page, site=params.get('site', [''])[0]))
+            query = params.get('q', [''])[0].strip()[:200]
+            site = params.get('site', [''])[0].strip().lower()
+            page = max(1, min(1000000, page))
+
+            def compute():
+                result = search_page(query, page, site=site)
+                return json.dumps(result, ensure_ascii=False).encode()
+
+            cache = getattr(self.server, 'search_cache', None)
+            if cache and len(site) <= 253:
+                data = cache.response((query, site, page), compute)
+            else:
+                data = compute()
+            self.reply_bytes(data)
         elif path.path == '/api/pages':
             params = parse_qs(path.query)
             try:
@@ -566,7 +597,10 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--port', type=int, default=8000)
+    parser.add_argument('--no-search-cache', action='store_true', help='Disable the search response cache')
     args = parser.parse_args()
     init_db()
     print(f'Little Search: http://127.0.0.1:{args.port}', flush=True)
-    ThreadingHTTPServer(('127.0.0.1', args.port), Handler).serve_forever()
+    with ThreadingHTTPServer(('127.0.0.1', args.port), Handler,
+                             cache_entries=0 if args.no_search_cache else 256) as server:
+        server.serve_forever()
