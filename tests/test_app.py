@@ -244,6 +244,26 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(len(app.search('é')), 1)
         self.assertEqual(app.search('"*'), [])
 
+    def test_exact_title_first_page_preserves_counts_and_pagination(self):
+        for i in range(12):
+            app.save_page(f'https://example.com/ref/{i:02}', 'Git-log reference', 'git log example')
+        for i in range(6):
+            app.save_page(f'https://other.test/guide/{i:02}', 'Git guide', 'git log ' * 20)
+        first = app.search_page('git log')
+        second = app.search_page('git log', page=2)
+        self.assertEqual((first['total'], first['pages']), (18, 2))
+        self.assertTrue(all(row['url'].startswith('https://example.com/') for row in first['results']))
+        self.assertEqual(sum(row['url'].startswith('https://example.com/') for row in second['results']), 2)
+        self.assertEqual(app.search_page('git log', site='other.test')['total'], 6)
+
+    def test_posting_count_respects_host_filter_and_mixed_terms(self):
+        app.save_page('https://example.com/ref', 'SQLite 日本', 'SQLite 日本の資料')
+        app.save_page('https://other.test/ref', 'SQLite 日本', 'SQLite 日本の資料')
+        app.save_page('https://example.com/other', 'Other 日本', '日本の資料')
+        self.assertEqual(app.search_page('SQLite 日本')['total'], 2)
+        self.assertEqual(app.search_page('SQLite 日本', site='example.com')['total'], 1)
+        self.assertEqual(app.search_page('日本')['total'], 3)
+
     def test_search_snapshot_survives_concurrent_refresh(self):
         url = 'https://example.com/ref'
         app.save_page(url, 'Original', '京都の資料')

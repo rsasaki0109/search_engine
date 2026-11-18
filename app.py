@@ -244,13 +244,15 @@ def search_page(query, page=1, page_size=10, site=''):
     if not query:
         return {'results': [], 'total': 0, 'page': 1, 'pages': 0}
     tokens = query.split()
+    site = site.strip()
     all_long = all(len(token) >= 3 for token in tokens)
     with closing(connect()) as db, db:
         # Counts, ranked IDs and deferred body reads must share one snapshot.
         # Let concurrent readers share mapped database pages via the OS page cache.
-        db.execute('PRAGMA mmap_size=268435456')
+        db.execute('PRAGMA mmap_size=2147418112')
         db.execute('BEGIN')
         has_titles = title_index_ready(db)
+        count_candidates = None
         if all_long:
             match = ' AND '.join('"' + t.replace('"', '""') + '"' for t in tokens)
             source, where, params = 'search', 'search MATCH ?', (match,)
@@ -270,7 +272,8 @@ def search_page(query, page=1, page_size=10, site=''):
                 candidates.append('SELECT rowid FROM short_search WHERE short_search MATCH ?')
                 params += (short_match_query(short_tokens),)
                 candidate_id = 't.id' if has_titles else 'rowid'
-                clauses.append(f'{candidate_id} IN (' + ' INTERSECT '.join(candidates) + ')')
+                count_candidates = ' INTERSECT '.join(candidates)
+                clauses.append(f'{candidate_id} IN ({count_candidates})')
             elif long_tokens:
                 clauses.append('search MATCH ?')
                 params += (' AND '.join('"' + token.replace('"', '""') + '"' for token in long_tokens),)
@@ -293,18 +296,30 @@ def search_page(query, page=1, page_size=10, site=''):
                 url_column, title_column = 't.url', 't.title'
                 id_column, host_expr = 't.id', 't.host'
                 rank, rank_params = title_order(query, 't.words')
-        if site.strip():
+        if site:
             where = f'({where}) AND {host_expr} = ?'
-            params = (*params, site.strip().lower().rstrip('.'))
-        count_source = body_source if all_long and not site.strip() else source
-        total = db.execute(f'SELECT count(*) FROM {count_source} WHERE {where}', params).fetchone()[0]
+            params = (*params, site.lower().rstrip('.'))
+        if count_candidates and not site:
+            total = db.execute(f'SELECT count(*) FROM ({count_candidates})', params).fetchone()[0]
+        else:
+            count_source = body_source if all_long and not site else source
+            total = db.execute(f'SELECT count(*) FROM {count_source} WHERE {where}', params).fetchone()[0]
         pages = (total + page_size - 1) // page_size
         page = min(page, max(1, pages))
-        rows = db.execute(
-            f'SELECT {id_column} AS rowid,{url_column} AS url,{title_column} AS title FROM {source} '
-            f'WHERE {where} ORDER BY {rank} DESC, {order} LIMIT ? OFFSET ?',
-            (*params, *rank_params, page_size, (page - 1) * page_size),
-        ).fetchall()
+        offset = (page - 1) * page_size
+        select = f'SELECT {id_column} AS rowid,{url_column} AS url,{title_column} AS title FROM {source} WHERE {where}'
+        rows = []
+        if all_long and has_titles and page == 1 and total > page_size and rank_params:
+            # A full first page of exact title phrases outranks every weaker match.
+            rows = db.execute(
+                f'{select} AND instr(t.words, ?) > 0 ORDER BY {order} LIMIT ?',
+                (*params, rank_params[0], page_size),
+            ).fetchall()
+        if total and len(rows) < page_size:
+            rows = db.execute(
+                f'{select} ORDER BY {rank} DESC, {order} LIMIT ? OFFSET ?',
+                (*params, *rank_params, page_size, offset),
+            ).fetchall()
         bodies = {}
         if rows:
             placeholders = ','.join('?' for _ in rows)
