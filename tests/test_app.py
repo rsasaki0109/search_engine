@@ -243,6 +243,21 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(len(app.search('é')), 1)
         self.assertEqual(app.search('"*'), [])
 
+    def test_title_projection_migration_preserves_rank_and_site_filter(self):
+        app.save_page('https://example.com/ref', 'Git-log', 'git log 日')
+        app.save_page('https://example.com/guide', 'Git guide', 'git log 日')
+        app.save_page('https://other.test/ref', 'Git-log', 'git log 日')
+        with app.connect() as db:
+            db.execute('DROP TABLE search_titles')
+        queries = ('git log', 'git 日', '日')
+        before = [app.search_page(query, site='example.com') for query in queries]
+        app.init_db()
+        self.assertEqual([app.search_page(query, site='example.com') for query in queries], before)
+        app.save_page('https://example.com/ref', 'Other title', 'Windows 日本')
+        self.assertEqual(app.search_page('git log', site='example.com')['total'], 1)
+        app.delete_page('https://example.com/ref')
+        self.assertEqual(app.search_page('日本', site='example.com')['total'], 0)
+
     def test_existing_database_migrates_without_re_crawling(self):
         app.save_page('https://example.com/', '京都', '日本の資料')
         with app.connect() as db:

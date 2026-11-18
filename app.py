@@ -7,6 +7,7 @@ import socket
 import sqlite3
 import threading
 import time
+from contextlib import closing
 from html.parser import HTMLParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -36,6 +37,20 @@ def title_match(title, query):
     return sum(word in title_words for word in set(query_words)) / len(set(query_words))
 
 
+def normalized_title(title):
+    return ' ' + ' '.join(re.findall(r'\w+', title.casefold())) + ' '
+
+
+def title_order(query, column):
+    words = re.findall(r'\w+', query.casefold())
+    if not words:
+        return '0 + 0', ()
+    unique = sorted(set(words))
+    matches = ' + '.join(f'(instr({column}, ?) > 0)' for _ in unique)
+    order = f'CASE WHEN instr({column}, ?) > 0 THEN {len(unique) + 1} ELSE {matches} END'
+    return order, (' ' + ' '.join(words) + ' ', *(' ' + word + ' ' for word in unique))
+
+
 def short_terms(title, body):
     """Distinct exact character postings; a newline prevents cross-field bigrams."""
     text = (title + '\n' + body).translate(str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'))
@@ -62,6 +77,10 @@ def short_index_ready(db):
     return bool(row and row[0] == '2')
 
 
+def title_index_ready(db):
+    return db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='search_titles'").fetchone() is not None
+
+
 def connect():
     db = sqlite3.connect(DB, timeout=10)
     db.create_function('url_host', 1, lambda url: (urlsplit(url).hostname or '').lower().rstrip('.'), deterministic=True)
@@ -72,6 +91,7 @@ def connect():
 
 def init_db():
     with connect() as db:
+        db.execute('BEGIN IMMEDIATE')
         db.execute('CREATE TABLE IF NOT EXISTS pages (url TEXT PRIMARY KEY, title TEXT, body TEXT, updated TEXT)')
         db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(url UNINDEXED, title, body, tokenize='trigram')")
         had_short_index = db.execute("SELECT 1 FROM sqlite_master WHERE name='short_search' AND type='table'").fetchone()
@@ -82,6 +102,14 @@ def init_db():
             rows = db.execute('SELECT rowid,url,title,body FROM search')
             db.executemany('INSERT INTO short_search(rowid,url,terms) VALUES (?,?,?)', ((row['rowid'], row['url'], short_terms(row['title'], row['body'])) for row in rows))
             db.execute("INSERT OR REPLACE INTO search_meta VALUES ('short_index_version','2')")
+        had_titles = title_index_ready(db)
+        db.execute('CREATE TABLE IF NOT EXISTS search_titles (id INTEGER PRIMARY KEY, url TEXT NOT NULL, title TEXT NOT NULL, words TEXT NOT NULL, host TEXT NOT NULL)')
+        if not had_titles or not db.execute("SELECT 1 FROM search_meta WHERE key='title_index_version'").fetchone():
+            db.execute('DELETE FROM search_titles')
+            rows = db.execute('SELECT rowid,url,title,url_host(url) AS host FROM search')
+            db.executemany('INSERT INTO search_titles VALUES (?,?,?,?,?)',
+                           ((row['rowid'], row['url'], row['title'], normalized_title(row['title']), row['host']) for row in rows))
+            db.execute("INSERT OR REPLACE INTO search_meta VALUES ('title_index_version','1')")
         db.execute('CREATE TABLE IF NOT EXISTS failures (url TEXT PRIMARY KEY, reason TEXT, updated TEXT)')
         db.execute("CREATE TABLE IF NOT EXISTS crawls (id INTEGER PRIMARY KEY, seed TEXT, started TEXT, finished TEXT, status TEXT, indexed INTEGER, message TEXT, events TEXT)")
         db.execute("UPDATE crawls SET status='interrupted', finished=?, message='サーバー停止により中断しました' WHERE status='running'", (utc_now(),))
@@ -156,8 +184,14 @@ def save_page(url, title, body):
         db.execute('INSERT OR REPLACE INTO pages VALUES (?, ?, ?, ?)', (url, title, body, time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())))
         if short_index_ready(db):
             db.execute('DELETE FROM short_search WHERE rowid IN (SELECT rowid FROM search WHERE url=?)', (url,))
+        has_titles = title_index_ready(db)
+        if has_titles:
+            db.execute('DELETE FROM search_titles WHERE id IN (SELECT rowid FROM search WHERE url=?)', (url,))
         db.execute('DELETE FROM search WHERE url = ?', (url,))
         rowid = db.execute('INSERT INTO search VALUES (?, ?, ?)', (url, title, body)).lastrowid
+        if has_titles:
+            db.execute('INSERT INTO search_titles VALUES (?,?,?,?,?)',
+                       (rowid, url, title, normalized_title(title), (urlsplit(url).hostname or '').lower().rstrip('.')))
         if short_index_ready(db):
             db.execute('INSERT INTO short_search(rowid,url,terms) VALUES (?,?,?)', (rowid, url, short_terms(title, body)))
 
@@ -179,6 +213,9 @@ def delete_page(url):
         deleted = db.execute('DELETE FROM pages WHERE url = ?', (url,)).rowcount
         if short_index_ready(db):
             db.execute('DELETE FROM short_search WHERE rowid IN (SELECT rowid FROM search WHERE url=?)', (url,))
+        has_titles = title_index_ready(db)
+        if has_titles:
+            db.execute('DELETE FROM search_titles WHERE id IN (SELECT rowid FROM search WHERE url=?)', (url,))
         db.execute('DELETE FROM search WHERE url = ?', (url,))
     return bool(deleted)
 
@@ -202,10 +239,14 @@ def search_page(query, page=1, page_size=10, site=''):
     if not query:
         return {'results': [], 'total': 0, 'page': 1, 'pages': 0}
     tokens = query.split()
-    with connect() as db:
+    all_long = all(len(token) >= 3 for token in tokens)
+    with closing(connect()) as db, db:
         # Counts, ranked IDs and deferred body reads must share one snapshot.
+        # Let concurrent readers share mapped database pages via the OS page cache.
+        db.execute('PRAGMA mmap_size=268435456')
         db.execute('BEGIN')
-        if all(len(t) >= 3 for t in tokens):
+        has_titles = title_index_ready(db)
+        if all_long:
             match = ' AND '.join('"' + t.replace('"', '""') + '"' for t in tokens)
             source, where, params = 'search', 'search MATCH ?', (match,)
             order = 'bm25(search,0,5,1), url'
@@ -223,7 +264,8 @@ def search_page(query, page=1, page_size=10, site=''):
                     params += (' AND '.join('"' + token.replace('"', '""') + '"' for token in long_tokens),)
                 candidates.append('SELECT rowid FROM short_search WHERE short_search MATCH ?')
                 params += (short_match_query(short_tokens),)
-                clauses.append('rowid IN (' + ' INTERSECT '.join(candidates) + ')')
+                candidate_id = 't.id' if has_titles else 'rowid'
+                clauses.append(f'{candidate_id} IN (' + ' INTERSECT '.join(candidates) + ')')
             elif long_tokens:
                 clauses.append('search MATCH ?')
                 params += (' AND '.join('"' + token.replace('"', '""') + '"' for token in long_tokens),)
@@ -231,17 +273,37 @@ def search_page(query, page=1, page_size=10, site=''):
                 clauses.extend('(instr(lower(title),lower(?))>0 OR instr(lower(body),lower(?))>0)' for _ in tokens)
                 params += tuple(token for token in tokens for _ in range(2))
             where, order = ' AND '.join(clauses), 'url'
+        body_source = source
+        url_column, title_column = 'url', 'title'
+        id_column, host_expr = 'rowid', 'url_host(url)'
+        rank, rank_params = 'title_match(title, ?)', (query,)
+        if has_titles:
+            if all_long:
+                source = 'search JOIN search_titles AS t ON t.id = search.rowid'
+                order = 'bm25(search,0,5,1), t.url'
+            elif indexed:
+                source = 'search_titles AS t'
+                order = 't.url'
+            if source != body_source:
+                url_column, title_column = 't.url', 't.title'
+                id_column, host_expr = 't.id', 't.host'
+                rank, rank_params = title_order(query, 't.words')
         if site.strip():
-            where = f'({where}) AND url_host(url) = ?'
+            where = f'({where}) AND {host_expr} = ?'
             params = (*params, site.strip().lower().rstrip('.'))
-        total = db.execute(f'SELECT count(*) FROM {source} WHERE {where}', params).fetchone()[0]
+        count_source = body_source if all_long and not site.strip() else source
+        total = db.execute(f'SELECT count(*) FROM {count_source} WHERE {where}', params).fetchone()[0]
         pages = (total + page_size - 1) // page_size
         page = min(page, max(1, pages))
-        rows = db.execute(f'SELECT rowid,url,title FROM {source} WHERE {where} ORDER BY title_match(title, ?) DESC, {order} LIMIT ? OFFSET ?', (*params, query, page_size, (page - 1) * page_size)).fetchall()
+        rows = db.execute(
+            f'SELECT {id_column} AS rowid,{url_column} AS url,{title_column} AS title FROM {source} '
+            f'WHERE {where} ORDER BY {rank} DESC, {order} LIMIT ? OFFSET ?',
+            (*params, *rank_params, page_size, (page - 1) * page_size),
+        ).fetchall()
         bodies = {}
         if rows:
             placeholders = ','.join('?' for _ in rows)
-            bodies = {row['rowid']: row['body'] for row in db.execute(f'SELECT rowid,body FROM {source} WHERE rowid IN ({placeholders})', tuple(row['rowid'] for row in rows))}
+            bodies = {row['rowid']: row['body'] for row in db.execute(f'SELECT rowid,body FROM {body_source} WHERE rowid IN ({placeholders})', tuple(row['rowid'] for row in rows))}
         results = [{'url': row['url'], 'title': row['title'], 'excerpt': excerpt(bodies[row['rowid']], tokens)} for row in rows]
         return {'results': results, 'total': total, 'page': page, 'pages': pages}
 

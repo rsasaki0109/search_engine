@@ -33,6 +33,8 @@ def validate(db):
         raise ValueError('ページ数と検索索引の件数が一致しません')
     if 'short_search' in tables and db.execute('SELECT count(*) FROM short_search').fetchone()[0] != counts['search']:
         raise ValueError('短い語用の索引と検索索引の件数が一致しません')
+    if 'search_titles' in tables and db.execute('SELECT count(*) FROM search_titles').fetchone()[0] != counts['search']:
+        raise ValueError('タイトルと検索索引の件数が一致しません')
     return counts
 
 
